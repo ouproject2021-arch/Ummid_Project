@@ -69,12 +69,112 @@ dashboard_page = '''
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body { font-family: Arial; background: #f5f5f5; }
-.container { display:flex; justify-content:center; padding:20px; }
-.form-card { background:white; padding:20px; width:600px; border-radius:10px; }
-input, textarea, select { width:100%; padding:8px; margin-bottom:10px; }
-button { width:100%; padding:10px; background:#2e7d32; color:white; border:none; }
-.success { color:green; text-align:center; }
+* { box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', Arial;
+    margin:0;
+    background: linear-gradient(120deg, #e3f2fd, #f1f8e9);
+}
+.header {
+    background:#1b5e20;
+    color:white;
+    padding:12px 16px;
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.header img { width:36px; margin-right:8px; }
+
+.header a {
+    color:white;
+    text-decoration:none;
+    margin-left:10px;
+    font-size:14px;
+}
+
+.container {
+    display:flex;
+    justify-content:center;
+    padding:15px;
+}
+
+.form-card {
+    background:white;
+    padding:20px;
+    border-radius:12px;
+    width:100%;
+    max-width:700px;
+    box-shadow:0 6px 18px rgba(0,0,0,0.15);
+}
+
+h2 {
+    text-align:center;
+    color:#2e7d32;
+    font-size:22px;
+}
+
+label {
+    font-weight:bold;
+    font-size:14px;
+}
+
+input, textarea, select {
+    width:100%;
+    padding:10px;
+    margin-top:5px;
+    margin-bottom:12px;
+    border-radius:6px;
+    border:1px solid #ccc;
+    font-size:14px;
+}
+
+input:focus, textarea:focus, select:focus {
+    outline:none;
+    border:1px solid #2e7d32;
+    box-shadow:0 0 5px rgba(46,125,50,0.5);
+}
+
+button {
+    width:100%;
+    background:#2e7d32;
+    color:white;
+    padding:12px;
+    border:none;
+    border-radius:6px;
+    font-size:16px;
+    cursor:pointer;
+}
+
+button:hover { background:#1b5e20; }
+
+.success {
+    text-align:center;
+    color:green;
+    font-weight:bold;
+    margin-top:10px;
+}
+
+/* 📱 Mobile Optimization */
+@media (max-width: 600px) {
+    .header {
+        flex-direction:column;
+        align-items:flex-start;
+    }
+
+    .header div {
+        margin-bottom:5px;
+    }
+
+    h2 {
+        font-size:18px;
+    }
+
+    .form-card {
+        padding:15px;
+    }
+}
 </style>
 
 <script>
