@@ -29,6 +29,7 @@ excel_file = "school_data.xlsx"
 
 # ===== IMAGE UPLOAD CONFIG =====
 #UPLOAD_BASE = r"C:\Som_Download"
+USE_GOOGLE_DRIVE = True
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
 def allowed_file(filename):
