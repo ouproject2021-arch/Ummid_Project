@@ -347,20 +347,57 @@ def dashboard():
         boys = int(request.form.get('boys') or 0)
         girls = int(request.form.get('girls') or 0)
 
-        school_name = request.form['school'].strip().replace(" ", "_")
+   school_name = request.form.get('school', '').strip()
 
-        # Create folder
-        school_folder = os.path.join(UPLOAD_BASE, school_name)
-        os.makedirs(school_folder, exist_ok=True)
+    if not school_name:
+        return "School Name is required"
 
-        def save_files(files, category):
-            category_folder = os.path.join(school_folder, category)
-            os.makedirs(category_folder, exist_ok=True)
+    # Clean folder name
+    school_name = school_name.replace(" ", "_").replace("/", "_")
 
-            for file in files:
-                if file and allowed_file(file.filename):
-                    file.save(os.path.join(category_folder, file.filename))
+    # Ensure base folder exists
+    if not os.path.exists(UPLOAD_BASE):
+        os.makedirs(UPLOAD_BASE)
 
+    school_folder = os.path.join(UPLOAD_BASE, school_name)
+    os.makedirs(school_folder, exist_ok=True)
+
+    print("Saving to:", school_folder)  # DEBUG
+
+    def save_files(field_name, category):
+        files = request.files.getlist(field_name)
+
+        if not files:
+            print(f"No files for {category}")
+            return
+
+        category_folder = os.path.join(school_folder, category)
+        os.makedirs(category_folder, exist_ok=True)
+
+        for file in files:
+            if file and file.filename != '':
+                if allowed_file(file.filename):
+
+                    # Avoid overwrite by renaming
+                    filename = file.filename.replace(" ", "_")
+                    filepath = os.path.join(category_folder, filename)
+
+                    counter = 1
+                    base, ext = os.path.splitext(filepath)
+
+                    while os.path.exists(filepath):
+                        filepath = f"{base}_{counter}{ext}"
+                        counter += 1
+
+                    file.save(filepath)
+                    print("Saved:", filepath)
+
+                else:
+                    print("Invalid file type:", file.filename)
+            else:
+                print("Empty file skipped")
+
+ # Save all categories
         save_files(request.files.getlist('smart_class'), "Smart_Class")
         save_files(request.files.getlist('ro'), "RO")
         save_files(request.files.getlist('sanitary'), "Sanitary")
