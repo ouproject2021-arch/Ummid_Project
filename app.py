@@ -13,10 +13,23 @@ from googleapiclient.discovery import build
 from google.oauth2 import service_account
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
-SERVICE_ACCOUNT_FILE = 'credentials.json'
+import json
+import os
+from googleapiclient.discovery import build
+from google.oauth2 import service_account
 
-creds = service_account.Credentials.from_service_account_file(
-    SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+SCOPES = ['https://www.googleapis.com/auth/drive']
+
+creds_json = os.environ.get("GOOGLE_CREDENTIALS")
+
+if not creds_json:
+    raise Exception("Missing GOOGLE_CREDENTIALS")
+
+creds_dict = json.loads(creds_json)
+creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+
+creds = service_account.Credentials.from_service_account_info(
+    creds_dict, scopes=SCOPES)
 
 drive_service = build('drive', 'v3', credentials=creds)
 
