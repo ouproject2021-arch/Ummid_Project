@@ -173,7 +173,7 @@ th, td { padding:8px; }
 
 <div class="header">
     <div class="header-left">
-        <img src="/static/logo.png">
+       <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo">
         <strong>Ummid Foundation (Hope for Human)</strong>
     </div>
     <div>
