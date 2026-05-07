@@ -170,8 +170,8 @@ th, td { padding:8px; }
 
 <div class="header">
     <div class="header-left">
-        <img src="https://via.placeholder.com/40">
-        <strong>Your NGO Name</strong>
+        <img src="/static/Ummid_trans.png">
+        <strong>Ummid Foundation (Hope for Human)</strong>
     </div>
     <div>
         <a href="/export" style="color:white; margin-right:15px;">Download Excel</a>
