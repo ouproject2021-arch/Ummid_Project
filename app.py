@@ -28,7 +28,7 @@ app.secret_key = "secret123"
 excel_file = "school_data.xlsx"
 
 # ===== IMAGE UPLOAD CONFIG =====
-UPLOAD_BASE = r"C:\Som_Download"
+#UPLOAD_BASE = r"C:\Som_Download"
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
 def allowed_file(filename):
