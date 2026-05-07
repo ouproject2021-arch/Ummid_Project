@@ -99,7 +99,7 @@ button:hover {
 <body>
 
 <div class="login-box">
-    <img src="{{ url_for('static', filename='Ummid_trans.png') }}" alt="Logo">
+    <img src="{{ url_for('static', filename='images/Ummid_trans.png') }}">
     <div class="brand">Ummid Foundtion (Hope for Human)</div>
 
     <h3>Login</h3>
