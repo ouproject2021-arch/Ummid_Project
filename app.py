@@ -185,7 +185,18 @@ function calculateTotal() {
 }
 </script>
 </head>
+<body>
 
+<div class="header">
+    <div style="display:flex; align-items:center;">
+        <img src="/static/logo.png">
+        <strong>Ummid Foundation (Hope for Human)</strong>
+    </div>
+    <div>
+        <a href="/export">Download Excel</a>
+        <a href="/logout">Logout</a>
+    </div>
+</div>
 <body>
 <div class="container">
 <div class="form-card">
@@ -194,16 +205,16 @@ function calculateTotal() {
 
 <form method="post" enctype="multipart/form-data">
 
+<label>UDISC Number</label>
+<input name="udisc">
+
 <label>School Name</label>
 <input name="school">
-
-<label>UDISC</label>
-<input name="udisc">
 
 <label>Location</label>
 <input name="location">
 
-<label>Year</label>
+<label>Year of Establishment</label>
 <input name="year">
 
 <label>Girls</label>
@@ -212,10 +223,10 @@ function calculateTotal() {
 <label>Boys</label>
 <input id="boys" name="boys" onkeyup="calculateTotal()">
 
-<label>Total</label>
-<input id="total" readonly>
+<label>Total Students</label>
+<input id="total" name="total" readonly>
 
-<label>Company</label>
+<label>Company Name</label>
 <input name="company">
 
 <label>FY</label>
@@ -223,8 +234,10 @@ function calculateTotal() {
 
 <label>Phase</label>
 <select name="phase">
-<option>1st</option>
-<option>2nd</option>
+<option>1st Phase</option>
+<option>2nd Phase</option>
+<option>3rd Phase</option>
+<option>4th Phase</option>
 </select>
 
 <label>Remarks</label>
@@ -301,14 +314,14 @@ def dashboard():
         save_files(request.files.getlist('toilet'), "Toilet")
 
         data = {
+            "UDISC Number": request.form['udisc'],
             "School Name": request.form['school'],
-            "UDISC": request.form['udisc'],
             "Location": request.form['location'],
             "Year": request.form['year'],
             "Girls": girls,
             "Boys": boys,
-            "Total": boys + girls,
-            "Company": request.form['company'],
+            "Total Students": boys + girls,
+            "Company Name": request.form['company'],
             "FY": request.form['fy'],
             "Phase": request.form['phase'],
             "Remarks": request.form['remarks']
