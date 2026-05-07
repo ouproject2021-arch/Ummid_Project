@@ -102,7 +102,7 @@ button {
 <body>
 
 <div class="login-box">
-    <img src="/static/logo.png" class="logo">
+    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo">
     <div class="brand">Ummid Foundation (Hope for Human)</div>
 
     <h3>Login</h3>
