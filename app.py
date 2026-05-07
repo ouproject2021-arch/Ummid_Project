@@ -1,50 +1,25 @@
 # ===============================
 # School Data Entry Web App
-# Tech: Python Flask + SQLite + Excel Export + Static Logo
+# Tech: Python Flask + Excel (Enhanced Fields + Auto Total)
 # ===============================
 
-# Folder Structure (IMPORTANT)
+# Folder Structure
 # project/
 # ├── app.py
-# ├── school.db
 # ├── static/
-# │     └── logo.png   <-- put your NGO logo here
+# │     └── logo.png
 
-# STEP 1: Install dependencies
+# Install:
 # pip install flask pandas openpyxl
 
 from flask import Flask, render_template_string, request, redirect, session, send_file
-import sqlite3
 import pandas as pd
+import os
 
-app = Flask(__name__, static_folder='static')
+app = Flask(__name__)
 app.secret_key = "secret123"
 
-# ================= DATABASE =================
-def init_db():
-    conn = sqlite3.connect('school.db')
-    cur = conn.cursor()
-
-    cur.execute('''CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT,
-        password TEXT
-    )''')
-
-    cur.execute('''CREATE TABLE IF NOT EXISTS records (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT,
-        school TEXT,
-        category TEXT,
-        remarks TEXT
-    )''')
-
-    cur.execute("INSERT OR IGNORE INTO users (id, username, password) VALUES (1,'admin','admin123')")
-
-    conn.commit()
-    conn.close()
-
-init_db()
+excel_file = "school_data.xlsx"
 
 # ================= LOGIN =================
 login_page = '''
@@ -52,73 +27,26 @@ login_page = '''
 <html>
 <head>
 <style>
-body {
-    font-family: Arial;
-    background: linear-gradient(135deg, #e8f5e9, #ffffff);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    margin: 0;
-}
-
-.login-box {
-    background: white;
-    padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.15);
-    text-align: center;
-    width: 320px;
-}
-
-.logo {
-    width: 80px;
-    margin-bottom: 10px;
-}
-
-.brand {
-    font-size: 18px;
-    font-weight: bold;
-    color: #2e7d32;
-    margin-bottom: 20px;
-}
-
-input {
-    padding: 10px;
-    width: 100%;
-    margin-top: 5px;
-}
-
-button {
-    padding: 10px 15px;
-    background: #2e7d32;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}
+body { font-family: Arial; background: linear-gradient(135deg,#e8f5e9,#fff); display:flex; justify-content:center; align-items:center; height:100vh; margin:0; }
+.login-box { background:#fff; padding:30px; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,0.15); text-align:center; width:320px; }
+.logo { width:80px; }
+.brand { font-weight:bold; color:#2e7d32; margin:10px 0; }
+input { padding:10px; width:100%; }
+button { padding:10px; background:#2e7d32; color:white; border:none; }
 </style>
 </head>
 <body>
-
 <div class="login-box">
-    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo">
+    <img src="/static/logo.png" class="logo">
     <div class="brand">Ummid Foundation (Hope for Human)</div>
-
     <h3>Login</h3>
     <form method="post">
-        Username:<br>
-        <input name="username"><br><br>
-
-        Password:<br>
-        <input type="password" name="password"><br><br>
-
+        <input name="username" placeholder="Username"><br><br>
+        <input type="password" name="password" placeholder="Password"><br><br>
         <button type="submit">Login</button>
     </form>
-
     <p style="color:red;">{{error}}</p>
 </div>
-
 </body>
 </html>
 '''
@@ -127,21 +55,11 @@ button {
 def login():
     error = ""
     if request.method == 'POST':
-        u = request.form['username']
-        p = request.form['password']
-
-        conn = sqlite3.connect('school.db')
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM users WHERE username=? AND password=?", (u,p))
-        user = cur.fetchone()
-        conn.close()
-
-        if user:
-            session['user'] = u
+        if request.form['username'] == 'admin' and request.form['password'] == 'admin123':
+            session['user'] = 'admin'
             return redirect('/dashboard')
         else:
             error = "Invalid login"
-
     return render_template_string(login_page, error=error)
 
 # ================= DASHBOARD =================
@@ -149,119 +67,246 @@ dashboard_page = '''
 <!DOCTYPE html>
 <html>
 <head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body { font-family: Arial; margin:0; background:#f5f5f5; }
+* { box-sizing: border-box; }
+body {
+    font-family: 'Segoe UI', Arial;
+    margin:0;
+    background: linear-gradient(120deg, #e3f2fd, #f1f8e9);
+}
+
 .header {
+    background:#1b5e20;
+    color:white;
+    padding:12px 16px;
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.header img { width:36px; margin-right:8px; }
+
+.header a {
+    color:white;
+    text-decoration:none;
+    margin-left:10px;
+    font-size:14px;
+}
+
+.container {
+    display:flex;
+    justify-content:center;
+    padding:15px;
+}
+
+.form-card {
+    background:white;
+    padding:20px;
+    border-radius:12px;
+    width:100%;
+    max-width:700px;
+    box-shadow:0 6px 18px rgba(0,0,0,0.15);
+}
+
+h2 {
+    text-align:center;
+    color:#2e7d32;
+    font-size:22px;
+}
+
+label {
+    font-weight:bold;
+    font-size:14px;
+}
+
+input, textarea, select {
+    width:100%;
+    padding:10px;
+    margin-top:5px;
+    margin-bottom:12px;
+    border-radius:6px;
+    border:1px solid #ccc;
+    font-size:14px;
+}
+
+input:focus, textarea:focus, select:focus {
+    outline:none;
+    border:1px solid #2e7d32;
+    box-shadow:0 0 5px rgba(46,125,50,0.5);
+}
+
+button {
+    width:100%;
     background:#2e7d32;
     color:white;
-    padding:10px 20px;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
+    padding:12px;
+    border:none;
+    border-radius:6px;
+    font-size:16px;
+    cursor:pointer;
 }
-.header-left {
-    display:flex;
-    align-items:center;
+
+button:hover { background:#1b5e20; }
+
+.success {
+    text-align:center;
+    color:green;
+    font-weight:bold;
+    margin-top:10px;
 }
-.header img { width:40px; margin-right:10px; }
-.container { padding:20px; }
-table { background:white; border-collapse: collapse; }
-th, td { padding:8px; }
+
+/* 📱 Mobile Optimization */
+@media (max-width: 600px) {
+    .header {
+        flex-direction:column;
+        align-items:flex-start;
+    }
+
+    .header div {
+        margin-bottom:5px;
+    }
+
+    h2 {
+        font-size:18px;
+    }
+
+    .form-card {
+        padding:15px;
+    }
+}
+
 </style>
+
+<script>
+function calculateTotal() {
+    var boys = parseInt(document.getElementById('boys').value) || 0;
+    var girls = parseInt(document.getElementById('girls').value) || 0;
+    document.getElementById('total').value = boys + girls;
+}
+</script>
+
 </head>
 <body>
 
 <div class="header">
-    <div class="header-left">
-       <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo">
+    <div style="display:flex; align-items:center;">
+        <img src="/static/logo.png">
         <strong>Ummid Foundation (Hope for Human)</strong>
     </div>
     <div>
-        <a href="/export" style="color:white; margin-right:15px;">Download Excel</a>
-        <a href="/logout" style="color:white;">Logout</a>
+        <a href="/export">Download Excel</a>
+        <a href="/logout">Logout</a>
     </div>
 </div>
 
 <div class="container">
-<h2>Data Entry Form</h2>
+<div class="form-card">
 
-<form method="post">
-Name:<br>
-<input name="name"><br><br>
+<h2>School Data Entry Form</h2>
 
-School:<br>
-<input name="school"><br><br>
+<form method="post" id="dataForm">
 
-Category:<br>
-<select name="category">
-<option>RO</option>
-<option>Toilet</option>
-<option>Smart Class</option>
-</select><br><br>
+<label>UDISC Number</label>
+<input name="udisc">
 
-Remarks:<br>
-<textarea name="remarks"></textarea><br><br>
+<label>School Name</label>
+<input name="school">
 
-<button type="submit">Save</button>
+<label>Location</label>
+<input name="location">
+
+<label>Year of Establishment</label>
+<input name="year">
+
+<label>Girls</label>
+<input id="girls" name="girls" onkeyup="calculateTotal()">
+
+<label>Boys</label>
+<input id="boys" name="boys" onkeyup="calculateTotal()">
+
+<label>Total Students</label>
+<input id="total" name="total" readonly>
+
+<label>Company Name</label>
+<input name="company">
+
+<label>FY</label>
+<input name="fy">
+
+<label>Phase</label>
+<select name="phase">
+<option>1st Phase</option>
+<option>2nd Phase</option>
+<option>3rd Phase</option>
+<option>4th Phase</option>
+</select>
+
+<label>Remarks</label>
+<textarea name="remarks"></textarea>
+
+<button type="submit">Save to Excel</button>
+
 </form>
 
-<hr>
-<h3>Saved Records</h3>
-<table border="1">
-<tr><th>Name</th><th>School</th><th>Category</th><th>Remarks</th></tr>
-{% for r in records %}
-<tr>
-<td>{{r[1]}}</td>
-<td>{{r[2]}}</td>
-<td>{{r[3]}}</td>
-<td>{{r[4]}}</td>
-</tr>
-{% endfor %}
-</table>
+{% if success %}
+<div class="success">✅ Data saved successfully!</div>
+{% endif %}
+
+</div>
 </div>
 
 </body>
 </html>
 '''
 
+# ================= SAVE =================
+def save_to_excel(data):
+    df_new = pd.DataFrame([data])
+    if os.path.exists(excel_file):
+        df_old = pd.read_excel(excel_file)
+        df = pd.concat([df_old, df_new], ignore_index=True)
+    else:
+        df = df_new
+    df.to_excel(excel_file, index=False)
+
 @app.route('/dashboard', methods=['GET','POST'])
 def dashboard():
     if 'user' not in session:
         return redirect('/')
 
-    conn = sqlite3.connect('school.db')
-    cur = conn.cursor()
+    success = False
 
     if request.method == 'POST':
-        name = request.form['name']
-        school = request.form['school']
-        category = request.form['category']
-        remarks = request.form['remarks']
+        boys = int(request.form.get('boys') or 0)
+        girls = int(request.form.get('girls') or 0)
 
-        cur.execute("INSERT INTO records (name,school,category,remarks) VALUES (?,?,?,?)",
-                    (name, school, category, remarks))
-        conn.commit()
+        data = {
+            "UDISC Number": request.form['udisc'],
+            "School Name": request.form['school'],
+            "Location": request.form['location'],
+            "Year": request.form['year'],
+            "Girls": girls,
+            "Boys": boys,
+            "Total Students": boys + girls,
+            "Company Name": request.form['company'],
+            "FY": request.form['fy'],
+            "Phase": request.form['phase'],
+            "Remarks": request.form['remarks']
+        }
 
-    cur.execute("SELECT * FROM records")
-    records = cur.fetchall()
-    conn.close()
+        save_to_excel(data)
+        success = True
 
-    return render_template_string(dashboard_page, records=records)
+    return render_template_string(dashboard_page, success=success)
 
 # ================= EXPORT =================
 @app.route('/export')
 def export():
-    if 'user' not in session:
-        return redirect('/')
-
-    conn = sqlite3.connect('school.db')
-    df = pd.read_sql_query("SELECT name, school, category, remarks FROM records", conn)
-    conn.close()
-
-    file_path = "export.xlsx"
-    df.to_excel(file_path, index=False)
-
-    return send_file(file_path, as_attachment=True)
+    if os.path.exists(excel_file):
+        return send_file(excel_file, as_attachment=True)
+    return "No data available"
 
 # ================= LOGOUT =================
 @app.route('/logout')
@@ -272,3 +317,4 @@ def logout():
 # ================= RUN =================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
+
