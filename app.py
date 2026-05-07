@@ -108,6 +108,27 @@ body {
     max-width:700px;
     box-shadow:0 6px 18px rgba(0,0,0,0.15);
 }
+/* GRID FORM */
+.form-grid {
+    display:grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap:15px;
+}
+
+.form-group {
+    display:flex;
+    flex-direction:column;
+}
+
+.form-group.full {
+    grid-column: span 2;
+}
+
+input, textarea, select {
+    padding:8px;
+    margin-top:5px;
+}
+
 
 h2 {
     text-align:center;
