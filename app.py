@@ -225,34 +225,54 @@ function calculateTotal() {
 <h2>School Data Entry</h2>
 
 <form method="post" enctype="multipart/form-data">
+<div class="form-grid">
 
+<div class="form-group">
 <label>UDISC Number</label>
 <input name="udisc">
+</div>
 
+<div class="form-group">
 <label>School Name</label>
 <input name="school">
+</div>
 
+<div class="form-group">
 <label>Location</label>
 <input name="location">
+</div>
 
+<div class="form-group">
 <label>Year of Establishment</label>
 <input name="year">
+</div>
 
+<div class="form-group">
 <label>Girls</label>
 <input id="girls" name="girls" onkeyup="calculateTotal()">
+</div>
 
+<div class="form-group">
 <label>Boys</label>
 <input id="boys" name="boys" onkeyup="calculateTotal()">
+</div>
 
+<div class="form-group">
 <label>Total Students</label>
 <input id="total" name="total" readonly>
+</div>
 
+<div class="form-group">
 <label>Company Name</label>
 <input name="company">
+</div>
 
+<div class="form-group">
 <label>FY</label>
 <input name="fy">
+</div>
 
+<div class="form-group">
 <label>Phase</label>
 <select name="phase">
 <option>1st Phase</option>
@@ -260,24 +280,36 @@ function calculateTotal() {
 <option>3rd Phase</option>
 <option>4th Phase</option>
 </select>
+</div>
 
+<div class="form-group full">
 <label>Remarks</label>
 <textarea name="remarks"></textarea>
+</div>
 
 <hr>
 
+<div class="form-group full">
 <label>Smart Class Photos</label>
 <input type="file" name="smart_class" multiple>
+</div>
 
+<div class="form-group full">
 <label>RO Photos</label>
 <input type="file" name="ro" multiple>
+</div>
 
+<div class="form-group full">
 <label>Sanitary Photos</label>
 <input type="file" name="sanitary" multiple>
+</div>
 
+<div class="form-group full">
 <label>Toilet Photos</label>
 <input type="file" name="toilet" multiple>
+</div>
 
+</div>
 <button type="submit">Submit</button>
 
 </form>
