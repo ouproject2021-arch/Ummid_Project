@@ -17,7 +17,7 @@ from flask import Flask, render_template_string, request, redirect, session, sen
 import sqlite3
 import pandas as pd
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 app.secret_key = "secret123"
 
 # ================= DATABASE =================
