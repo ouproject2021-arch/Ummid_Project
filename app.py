@@ -1,16 +1,7 @@
 # ===============================
 # School Data Entry Web App
-# Tech: Python Flask + Excel (Enhanced Fields + Auto Total)
+# Tech: Python Flask + Excel + Image Upload
 # ===============================
-
-# Folder Structure
-# project/
-# ├── app.py
-# ├── static/
-# │     └── logo.png
-
-# Install:
-# pip install flask pandas openpyxl
 
 from flask import Flask, render_template_string, request, redirect, session, send_file
 import pandas as pd
@@ -20,6 +11,14 @@ app = Flask(__name__)
 app.secret_key = "secret123"
 
 excel_file = "school_data.xlsx"
+
+# ===== IMAGE UPLOAD CONFIG =====
+UPLOAD_BASE = r"C:\Som_Download"
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 # ================= LOGIN =================
 login_page = '''
@@ -62,6 +61,7 @@ def login():
             error = "Invalid login"
     return render_template_string(login_page, error=error)
 
+
 # ================= DASHBOARD =================
 dashboard_page = '''
 <!DOCTYPE html>
@@ -69,114 +69,12 @@ dashboard_page = '''
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-* { box-sizing: border-box; }
-body {
-    font-family: 'Segoe UI', Arial;
-    margin:0;
-    background: linear-gradient(120deg, #e3f2fd, #f1f8e9);
-}
-
-.header {
-    background:#1b5e20;
-    color:white;
-    padding:12px 16px;
-    display:flex;
-    flex-wrap:wrap;
-    justify-content:space-between;
-    align-items:center;
-}
-
-.header img { width:36px; margin-right:8px; }
-
-.header a {
-    color:white;
-    text-decoration:none;
-    margin-left:10px;
-    font-size:14px;
-}
-
-.container {
-    display:flex;
-    justify-content:center;
-    padding:15px;
-}
-
-.form-card {
-    background:white;
-    padding:20px;
-    border-radius:12px;
-    width:100%;
-    max-width:700px;
-    box-shadow:0 6px 18px rgba(0,0,0,0.15);
-}
-
-h2 {
-    text-align:center;
-    color:#2e7d32;
-    font-size:22px;
-}
-
-label {
-    font-weight:bold;
-    font-size:14px;
-}
-
-input, textarea, select {
-    width:100%;
-    padding:10px;
-    margin-top:5px;
-    margin-bottom:12px;
-    border-radius:6px;
-    border:1px solid #ccc;
-    font-size:14px;
-}
-
-input:focus, textarea:focus, select:focus {
-    outline:none;
-    border:1px solid #2e7d32;
-    box-shadow:0 0 5px rgba(46,125,50,0.5);
-}
-
-button {
-    width:100%;
-    background:#2e7d32;
-    color:white;
-    padding:12px;
-    border:none;
-    border-radius:6px;
-    font-size:16px;
-    cursor:pointer;
-}
-
-button:hover { background:#1b5e20; }
-
-.success {
-    text-align:center;
-    color:green;
-    font-weight:bold;
-    margin-top:10px;
-}
-
-/* 📱 Mobile Optimization */
-@media (max-width: 600px) {
-    .header {
-        flex-direction:column;
-        align-items:flex-start;
-    }
-
-    .header div {
-        margin-bottom:5px;
-    }
-
-    h2 {
-        font-size:18px;
-    }
-
-    .form-card {
-        padding:15px;
-    }
-}
-
+body { font-family: Arial; background: #f5f5f5; }
+.container { display:flex; justify-content:center; padding:20px; }
+.form-card { background:white; padding:20px; width:600px; border-radius:10px; }
+input, textarea, select { width:100%; padding:8px; margin-bottom:10px; }
+button { width:100%; padding:10px; background:#2e7d32; color:white; border:none; }
+.success { color:green; text-align:center; }
 </style>
 
 <script>
@@ -186,38 +84,26 @@ function calculateTotal() {
     document.getElementById('total').value = boys + girls;
 }
 </script>
-
 </head>
+
 <body>
-
-<div class="header">
-    <div style="display:flex; align-items:center;">
-        <img src="/static/logo.png">
-        <strong>Ummid Foundation (Hope for Human)</strong>
-    </div>
-    <div>
-        <a href="/export">Download Excel</a>
-        <a href="/logout">Logout</a>
-    </div>
-</div>
-
 <div class="container">
 <div class="form-card">
 
-<h2>School Data Entry Form</h2>
+<h2>School Data Entry</h2>
 
-<form method="post" id="dataForm">
-
-<label>UDISC Number</label>
-<input name="udisc">
+<form method="post" enctype="multipart/form-data">
 
 <label>School Name</label>
 <input name="school">
 
+<label>UDISC</label>
+<input name="udisc">
+
 <label>Location</label>
 <input name="location">
 
-<label>Year of Establishment</label>
+<label>Year</label>
 <input name="year">
 
 <label>Girls</label>
@@ -226,10 +112,10 @@ function calculateTotal() {
 <label>Boys</label>
 <input id="boys" name="boys" onkeyup="calculateTotal()">
 
-<label>Total Students</label>
-<input id="total" name="total" readonly>
+<label>Total</label>
+<input id="total" readonly>
 
-<label>Company Name</label>
+<label>Company</label>
 <input name="company">
 
 <label>FY</label>
@@ -237,26 +123,37 @@ function calculateTotal() {
 
 <label>Phase</label>
 <select name="phase">
-<option>1st Phase</option>
-<option>2nd Phase</option>
-<option>3rd Phase</option>
-<option>4th Phase</option>
+<option>1st</option>
+<option>2nd</option>
 </select>
 
 <label>Remarks</label>
 <textarea name="remarks"></textarea>
 
-<button type="submit">Save to Excel</button>
+<hr>
+
+<label>Smart Class Photos</label>
+<input type="file" name="smart_class" multiple>
+
+<label>RO Photos</label>
+<input type="file" name="ro" multiple>
+
+<label>Sanitary Photos</label>
+<input type="file" name="sanitary" multiple>
+
+<label>Toilet Photos</label>
+<input type="file" name="toilet" multiple>
+
+<button type="submit">Submit</button>
 
 </form>
 
 {% if success %}
-<div class="success">✅ Data saved successfully!</div>
+<p class="success">Data + Images Saved ✅</p>
 {% endif %}
 
 </div>
 </div>
-
 </body>
 </html>
 '''
@@ -271,6 +168,8 @@ def save_to_excel(data):
         df = df_new
     df.to_excel(excel_file, index=False)
 
+
+# ================= DASHBOARD LOGIC =================
 @app.route('/dashboard', methods=['GET','POST'])
 def dashboard():
     if 'user' not in session:
@@ -282,15 +181,34 @@ def dashboard():
         boys = int(request.form.get('boys') or 0)
         girls = int(request.form.get('girls') or 0)
 
+        school_name = request.form['school'].strip().replace(" ", "_")
+
+        # Create folder
+        school_folder = os.path.join(UPLOAD_BASE, school_name)
+        os.makedirs(school_folder, exist_ok=True)
+
+        def save_files(files, category):
+            category_folder = os.path.join(school_folder, category)
+            os.makedirs(category_folder, exist_ok=True)
+
+            for file in files:
+                if file and allowed_file(file.filename):
+                    file.save(os.path.join(category_folder, file.filename))
+
+        save_files(request.files.getlist('smart_class'), "Smart_Class")
+        save_files(request.files.getlist('ro'), "RO")
+        save_files(request.files.getlist('sanitary'), "Sanitary")
+        save_files(request.files.getlist('toilet'), "Toilet")
+
         data = {
-            "UDISC Number": request.form['udisc'],
             "School Name": request.form['school'],
+            "UDISC": request.form['udisc'],
             "Location": request.form['location'],
             "Year": request.form['year'],
             "Girls": girls,
             "Boys": boys,
-            "Total Students": boys + girls,
-            "Company Name": request.form['company'],
+            "Total": boys + girls,
+            "Company": request.form['company'],
             "FY": request.form['fy'],
             "Phase": request.form['phase'],
             "Remarks": request.form['remarks']
@@ -301,20 +219,24 @@ def dashboard():
 
     return render_template_string(dashboard_page, success=success)
 
+
 # ================= EXPORT =================
 @app.route('/export')
 def export():
     if os.path.exists(excel_file):
         return send_file(excel_file, as_attachment=True)
-    return "No data available"
+    return "No data"
+
 
 # ================= LOGOUT =================
 @app.route('/logout')
 def logout():
     session.pop('user', None)
     return redirect('/')
-
 # ================= RUN =================
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
 
+# ================= RUN =================
+if __name__ == "__main__":
+    app.run(debug=True)
