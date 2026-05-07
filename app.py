@@ -6,6 +6,21 @@
 from flask import Flask, render_template_string, request, redirect, session, send_file
 import pandas as pd
 import os
+# ========================
+# Google Drive
+#===============================
+from googleapiclient.discovery import build
+from google.oauth2 import service_account
+
+SCOPES = ['https://www.googleapis.com/auth/drive']
+SERVICE_ACCOUNT_FILE = 'credentials.json'
+
+creds = service_account.Credentials.from_service_account_file(
+    SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+
+drive_service = build('drive', 'v3', credentials=creds)
+
+PARENT_FOLDER_ID = '1SzrOrn93f3SDRBmWcYwhrLH3YUeQ-cuy'  # ← replace this
 
 app = Flask(__name__)
 app.secret_key = "secret123"
@@ -334,6 +349,36 @@ def save_to_excel(data):
         df = df_new
     df.to_excel(excel_file, index=False)
 
+#============== Helper Function for Google Drive================
+
+def create_folder(name, parent_id):
+    file_metadata = {
+        'name': name,
+        'mimeType': 'application/vnd.google-apps.folder',
+        'parents': [parent_id]
+    }
+    folder = drive_service.files().create(body=file_metadata, fields='id').execute()
+    return folder.get('id')
+
+
+def upload_file(file, folder_id):
+    from googleapiclient.http import MediaIoBaseUpload
+    import io
+
+    file_stream = io.BytesIO(file.read())
+
+    media = MediaIoBaseUpload(file_stream, mimetype=file.content_type)
+
+    file_metadata = {
+        'name': file.filename,
+        'parents': [folder_id]
+    }
+
+    drive_service.files().create(
+        body=file_metadata,
+        media_body=media,
+        fields='id'
+    ).execute()
 
 # ================= DASHBOARD LOGIC =================
 @app.route('/dashboard', methods=['GET','POST'])
@@ -347,55 +392,26 @@ def dashboard():
         boys = int(request.form.get('boys') or 0)
         girls = int(request.form.get('girls') or 0)
 
-   school_name = request.form.get('school', '').strip()
+   school_name = request.form['school'].strip()
 
-    if not school_name:
-        return "School Name is required"
+# Create main folder in Drive
+school_folder_id = create_folder(school_name, PARENT_FOLDER_ID)
 
-    # Clean folder name
-    school_name = school_name.replace(" ", "_").replace("/", "_")
+# Create subfolders
+folders = {
+    "smart_class": create_folder("Smart_Class", school_folder_id),
+    "ro": create_folder("RO", school_folder_id),
+    "sanitary": create_folder("Sanitary", school_folder_id),
+    "toilet": create_folder("Toilet", school_folder_id)
+}
 
-    # Ensure base folder exists
-    if not os.path.exists(UPLOAD_BASE):
-        os.makedirs(UPLOAD_BASE)
+# Upload files
+for field, folder_id in folders.items():
+    files = request.files.getlist(field)
 
-    school_folder = os.path.join(UPLOAD_BASE, school_name)
-    os.makedirs(school_folder, exist_ok=True)
-
-    print("Saving to:", school_folder)  # DEBUG
-
-    def save_files(field_name, category):
-        files = request.files.getlist(field_name)
-
-        if not files:
-            print(f"No files for {category}")
-            return
-
-        category_folder = os.path.join(school_folder, category)
-        os.makedirs(category_folder, exist_ok=True)
-
-        for file in files:
-            if file and file.filename != '':
-                if allowed_file(file.filename):
-
-                    # Avoid overwrite by renaming
-                    filename = file.filename.replace(" ", "_")
-                    filepath = os.path.join(category_folder, filename)
-
-                    counter = 1
-                    base, ext = os.path.splitext(filepath)
-
-                    while os.path.exists(filepath):
-                        filepath = f"{base}_{counter}{ext}"
-                        counter += 1
-
-                    file.save(filepath)
-                    print("Saved:", filepath)
-
-                else:
-                    print("Invalid file type:", file.filename)
-            else:
-                print("Empty file skipped")
+    for file in files:
+        if file and file.filename != "":
+            upload_file(file, folder_id)
 
  # Save all categories
         save_files(request.files.getlist('smart_class'), "Smart_Class")
