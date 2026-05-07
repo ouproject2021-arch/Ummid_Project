@@ -41,13 +41,57 @@ init_db()
 
 # ================= LOGIN =================
 login_page = '''
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+body {
+    font-family: Arial;
+    background-color: #f2f2f2;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.login-box {
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    text-align: center;
+}
+
+input {
+    padding: 8px;
+    width: 200px;
+}
+
+button {
+    padding: 8px 15px;
+}
+</style>
+</head>
+<body>
+
+<div class="login-box">
 <h2>Login</h2>
 <form method="post">
-Username: <input name="username"><br><br>
-Password: <input type="password" name="password"><br><br>
+Username:<br>
+<input name="username"><br><br>
+
+Password:<br>
+<input type="password" name="password"><br><br>
+
 <button type="submit">Login</button>
 </form>
+
 <p style="color:red;">{{error}}</p>
+</div>
+
+</body>
+</html>
 '''
 
 @app.route('/', methods=['GET','POST'])
