@@ -348,6 +348,12 @@ def save_to_excel(data):
     else:
         df = df_new
     df.to_excel(excel_file, index=False)
+#================= Test
+@app.route('/test-drive')
+def test_drive():
+    folder_id = create_folder("TEST_FOLDER", PARENT_FOLDER_ID)
+    return f"Created: {folder_id}"
+
 
 #============== Helper Function for Google Drive================
 
