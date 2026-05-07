@@ -1,7 +1,14 @@
 # ===============================
 # School Data Entry Web App
-# Tech: Python Flask + SQLite + Excel Export
+# Tech: Python Flask + SQLite + Excel Export + Static Logo
 # ===============================
+
+# Folder Structure (IMPORTANT)
+# project/
+# ├── app.py
+# ├── school.db
+# ├── static/
+# │     └── logo.png   <-- put your NGO logo here
 
 # STEP 1: Install dependencies
 # pip install flask pandas openpyxl
@@ -90,17 +97,13 @@ button {
     border-radius: 5px;
     cursor: pointer;
 }
-
-button:hover {
-    background: #1b5e20;
-}
 </style>
 </head>
 <body>
 
 <div class="login-box">
-    <img src="/static/Ummid_trans.png">
-    <div class="brand">Ummid Foundtion (Hope for Human)</div>
+    <img src="/static/logo.png" class="logo">
+    <div class="brand">Ummid Foundation (Hope for Human)</div>
 
     <h3>Login</h3>
     <form method="post">
@@ -170,7 +173,7 @@ th, td { padding:8px; }
 
 <div class="header">
     <div class="header-left">
-        <img src="/static/Ummid_trans.png">
+        <img src="/static/logo.png">
         <strong>Ummid Foundation (Hope for Human)</strong>
     </div>
     <div>
@@ -245,7 +248,7 @@ def dashboard():
 
     return render_template_string(dashboard_page, records=records)
 
-# ================= EXPORT TO EXCEL =================
+# ================= EXPORT =================
 @app.route('/export')
 def export():
     if 'user' not in session:
