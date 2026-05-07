@@ -99,7 +99,7 @@ button:hover {
 <body>
 
 <div class="login-box">
-    <img src="C:\Som_Download\Ummid Foundation\Ummid Foundation Doc\Ummid Transparent.png" class="logo">
+    <img src="/static/Ummid_trans" class="logo">
     <div class="brand">Ummid Foundtion (Hope for Human)</div>
 
     <h3>Login</h3>
