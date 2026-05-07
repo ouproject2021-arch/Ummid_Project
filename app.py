@@ -396,55 +396,63 @@ def dashboard():
     success = False
 
     if request.method == 'POST':
-        boys = int(request.form.get('boys') or 0)
-        girls = int(request.form.get('girls') or 0)
+        try:
+            boys = int(request.form.get('boys') or 0)
+            girls = int(request.form.get('girls') or 0)
 
-   school_name = request.form['school'].strip()
+            school_name = request.form['school'].strip()
 
-# Create main folder in Drive
-school_folder_id = create_folder(school_name, PARENT_FOLDER_ID)
+            if not school_name:
+                return "School name is required"
 
-# Create subfolders
-folders = {
-    "smart_class": create_folder("Smart_Class", school_folder_id),
-    "ro": create_folder("RO", school_folder_id),
-    "sanitary": create_folder("Sanitary", school_folder_id),
-    "toilet": create_folder("Toilet", school_folder_id)
-}
+            print("Creating main folder...")
 
-# Upload files
-for field, folder_id in folders.items():
-    files = request.files.getlist(field)
+            # Create main school folder
+            school_folder_id = create_folder(school_name, PARENT_FOLDER_ID)
+            print("School Folder ID:", school_folder_id)
 
-    for file in files:
-        if file and file.filename != "":
-            upload_file(file, folder_id)
+            # Create subfolders
+            folders = {
+                "smart_class": create_folder("Smart_Class", school_folder_id),
+                "ro": create_folder("RO", school_folder_id),
+                "sanitary": create_folder("Sanitary", school_folder_id),
+                "toilet": create_folder("Toilet", school_folder_id)
+            }
 
- # Save all categories
-        save_files(request.files.getlist('smart_class'), "Smart_Class")
-        save_files(request.files.getlist('ro'), "RO")
-        save_files(request.files.getlist('sanitary'), "Sanitary")
-        save_files(request.files.getlist('toilet'), "Toilet")
+            print("Subfolders created:", folders)
 
-        data = {
-            "UDISC Number": request.form['udisc'],
-            "School Name": request.form['school'],
-            "Location": request.form['location'],
-            "Year": request.form['year'],
-            "Girls": girls,
-            "Boys": boys,
-            "Total Students": boys + girls,
-            "Company Name": request.form['company'],
-            "FY": request.form['fy'],
-            "Phase": request.form['phase'],
-            "Remarks": request.form['remarks']
-        }
+            # Upload files
+            for field, folder_id in folders.items():
+                files = request.files.getlist(field)
 
-        save_to_excel(data)
-        success = True
+                for file in files:
+                    if file and file.filename != "":
+                        print(f"Uploading {file.filename} to {field}")
+                        upload_file(file, folder_id)
+
+            # Save Excel data
+            data = {
+                "UDISC Number": request.form['udisc'],
+                "School Name": school_name,
+                "Location": request.form['location'],
+                "Year": request.form['year'],
+                "Girls": girls,
+                "Boys": boys,
+                "Total Students": boys + girls,
+                "Company Name": request.form['company'],
+                "FY": request.form['fy'],
+                "Phase": request.form['phase'],
+                "Remarks": request.form['remarks']
+            }
+
+            save_to_excel(data)
+            success = True
+
+        except Exception as e:
+            print("ERROR:", str(e))
+            return f"Error occurred: {str(e)}"
 
     return render_template_string(dashboard_page, success=success)
-
 
 # ================= EXPORT =================
 @app.route('/export')
@@ -463,6 +471,3 @@ def logout():
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
 
-# ================= RUN =================
-if __name__ == "__main__":
-    app.run(debug=True)
