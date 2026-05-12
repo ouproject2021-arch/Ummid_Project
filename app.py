@@ -371,9 +371,31 @@ def save_to_excel(data):
 #================= Test
 @app.route('/test-drive')
 def test_drive():
-    folder_id = create_folder("TEST_FOLDER", PARENT_FOLDER_ID)
-    return f"Created: {folder_id}"
 
+    try:
+
+        if not drive_service:
+            return "Drive service not initialized"
+
+        # Test parent folder access
+        parent = drive_service.files().get(
+            fileId=PARENT_FOLDER_ID,
+            fields='id, name'
+        ).execute()
+
+        print("Parent Folder Found:", parent)
+
+        folder_id = create_folder("TEST_FOLDER", PARENT_FOLDER_ID)
+
+        return f"""
+        Parent Folder Access OK<br>
+        Parent Name: {parent['name']}<br>
+        Created Folder ID: {folder_id}
+        """
+
+    except Exception as e:
+        print("TEST DRIVE ERROR:", str(e))
+        return f"Google Drive Error: {str(e)}"
 
 #============== Helper Function for Google Drive================
 
