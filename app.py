@@ -6,29 +6,35 @@
 from flask import Flask, render_template_string, request, redirect, session, send_file
 import pandas as pd
 import os
+import json
+import io
+
 # ========================
 # Google Drive
-#===============================
+# ========================
 from werkzeug.utils import secure_filename
 from google.oauth2 import service_account
-
-SCOPES = ['https://www.googleapis.com/auth/drive']
-import json
-import os
 from googleapiclient.discovery import build
-from google.oauth2 import service_account
+from googleapiclient.http import MediaIoBaseUpload
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
-creds_json = os.environ.get("GOOGLE_CREDENTIALS")
+# ========================
+# GOOGLE DRIVE CONNECTION
+# ========================
 
-print("ENV CHECK:", creds_json is not None)
+drive_service = None
 
-if not creds_json:
-    raise Exception("GOOGLE_CREDENTIALS environment variable missing")
-    
-if creds_json:
+try:
+
+    creds_json = os.environ.get("GOOGLE_CREDENTIALS")
+
+    if not creds_json:
+        raise Exception("GOOGLE_CREDENTIALS environment variable not found")
+
     creds_dict = json.loads(creds_json)
+
+    # Fix private key formatting
     creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
 
     creds = service_account.Credentials.from_service_account_info(
@@ -36,11 +42,25 @@ if creds_json:
         scopes=SCOPES
     )
 
-    drive_service = build('drive', 'v3', credentials=creds)
-else:
+    drive_service = build(
+        'drive',
+        'v3',
+        credentials=creds
+    )
+
+    print("✅ Google Drive Connected Successfully")
+
+except Exception as e:
+    print("❌ GOOGLE DRIVE CONNECTION ERROR")
+    print(str(e))
     drive_service = None
 
-PARENT_FOLDER_ID = '1SzrOrn93f3SDRBmWcYwhrLH3YUeQ-cuy'  # ← replace this
+
+# ========================
+# GOOGLE DRIVE PARENT FOLDER
+# ========================
+
+PARENT_FOLDER_ID = '1SzrOrn93f3SDRBmWcYwhrLH3YUeQ-cuy'
 
 app = Flask(__name__)
 app.secret_key = "secret123"
@@ -48,69 +68,126 @@ app.secret_key = "secret123"
 excel_file = "school_data.xlsx"
 
 # ===== IMAGE UPLOAD CONFIG =====
-#UPLOAD_BASE = r"C:\Som_Download"
 USE_GOOGLE_DRIVE = True
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 # ================= LOGIN =================
+
 login_page = '''
 <!DOCTYPE html>
 <html>
 <head>
 <style>
-body { font-family: Arial; background: linear-gradient(135deg,#e8f5e9,#fff); display:flex; justify-content:center; align-items:center; height:100vh; margin:0; }
-.login-box { background:#fff; padding:30px; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,0.15); text-align:center; width:320px; }
+body {
+    font-family: Arial;
+    background: linear-gradient(135deg,#e8f5e9,#fff);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    margin:0;
+}
+.login-box {
+    background:#fff;
+    padding:30px;
+    border-radius:12px;
+    box-shadow:0 6px 18px rgba(0,0,0,0.15);
+    text-align:center;
+    width:320px;
+}
 .logo { width:80px; }
-.brand { font-weight:bold; color:#2e7d32; margin:10px 0; }
-input { padding:10px; width:100%; }
-button { padding:10px; background:#2e7d32; color:white; border:none; }
+.brand {
+    font-weight:bold;
+    color:#2e7d32;
+    margin:10px 0;
+}
+input {
+    padding:10px;
+    width:100%;
+}
+button {
+    padding:10px;
+    background:#2e7d32;
+    color:white;
+    border:none;
+}
 </style>
 </head>
+
 <body>
+
 <div class="login-box">
     <img src="/static/logo.png" class="logo">
-    <div class="brand">Ummid Foundation (Hope for Human)</div>
+
+    <div class="brand">
+        Ummid Foundation (Hope for Human)
+    </div>
+
     <h3>Login</h3>
+
     <form method="post">
         <input name="username" placeholder="Username"><br><br>
+
         <input type="password" name="password" placeholder="Password"><br><br>
+
         <button type="submit">Login</button>
     </form>
+
     <p style="color:red;">{{error}}</p>
+
 </div>
+
 </body>
 </html>
 '''
 
-@app.route('/', methods=['GET','POST'])
+
+@app.route('/', methods=['GET', 'POST'])
 def login():
+
     error = ""
+
     if request.method == 'POST':
+
         if request.form['username'] == 'admin' and request.form['password'] == 'admin123':
+
             session['user'] = 'admin'
+
             return redirect('/dashboard')
+
         else:
             error = "Invalid login"
+
     return render_template_string(login_page, error=error)
 
 
 # ================= DASHBOARD =================
+
 dashboard_page = '''
 <!DOCTYPE html>
 <html>
+
 <head>
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
-* { box-sizing: border-box; }
+
+* {
+    box-sizing: border-box;
+}
+
 body {
     font-family: 'Segoe UI', Arial;
     margin:0;
     background: linear-gradient(120deg, #e3f2fd, #f1f8e9);
 }
+
 .header {
     background:#1b5e20;
     color:white;
@@ -121,7 +198,10 @@ body {
     align-items:center;
 }
 
-.header img { width:36px; margin-right:8px; }
+.header img {
+    width:36px;
+    margin-right:8px;
+}
 
 .header a {
     color:white;
@@ -144,7 +224,7 @@ body {
     max-width:700px;
     box-shadow:0 6px 18px rgba(0,0,0,0.15);
 }
-/* GRID FORM */
+
 .form-grid {
     display:grid;
     grid-template-columns: repeat(2, 1fr);
@@ -160,37 +240,21 @@ body {
     grid-column: span 2;
 }
 
-input, textarea, select {
-    padding:8px;
-    margin-top:5px;
-}
-
-
 h2 {
     text-align:center;
     color:#2e7d32;
-    font-size:22px;
 }
 
 label {
     font-weight:bold;
-    font-size:14px;
 }
 
 input, textarea, select {
     width:100%;
     padding:10px;
     margin-top:5px;
-    margin-bottom:12px;
     border-radius:6px;
     border:1px solid #ccc;
-    font-size:14px;
-}
-
-input:focus, textarea:focus, select:focus {
-    outline:none;
-    border:1px solid #2e7d32;
-    box-shadow:0 0 5px rgba(46,125,50,0.5);
 }
 
 button {
@@ -200,11 +264,8 @@ button {
     padding:12px;
     border:none;
     border-radius:6px;
-    font-size:16px;
-    cursor:pointer;
+    margin-top:20px;
 }
-
-button:hover { background:#1b5e20; }
 
 .success {
     text-align:center;
@@ -213,54 +274,50 @@ button:hover { background:#1b5e20; }
     margin-top:10px;
 }
 
-/* 📱 Mobile Optimization */
-@media (max-width: 600px) {
-    .header {
-        flex-direction:column;
-        align-items:flex-start;
-    }
-
-    .header div {
-        margin-bottom:5px;
-    }
-
-    h2 {
-        font-size:18px;
-    }
-
-    .form-card {
-        padding:15px;
-    }
-}
 </style>
 
 <script>
+
 function calculateTotal() {
+
     var boys = parseInt(document.getElementById('boys').value) || 0;
+
     var girls = parseInt(document.getElementById('girls').value) || 0;
+
     document.getElementById('total').value = boys + girls;
 }
+
 </script>
+
 </head>
+
 <body>
 
 <div class="header">
+
     <div style="display:flex; align-items:center;">
+
         <img src="/static/logo.png">
+
         <strong>Ummid Foundation (Hope for Human)</strong>
+
     </div>
+
     <div>
         <a href="/export">Download Excel</a>
         <a href="/logout">Logout</a>
     </div>
+
 </div>
-<body>
+
 <div class="container">
+
 <div class="form-card">
 
 <h2>School Data Entry</h2>
 
 <form method="post" enctype="multipart/form-data">
+
 <div class="form-grid">
 
 <div class="form-group">
@@ -310,20 +367,20 @@ function calculateTotal() {
 
 <div class="form-group">
 <label>Phase</label>
+
 <select name="phase">
 <option>1st Phase</option>
 <option>2nd Phase</option>
 <option>3rd Phase</option>
 <option>4th Phase</option>
 </select>
+
 </div>
 
 <div class="form-group full">
 <label>Remarks</label>
 <textarea name="remarks"></textarea>
 </div>
-
-<hr>
 
 <div class="form-group full">
 <label>Smart Class Photos</label>
@@ -346,6 +403,7 @@ function calculateTotal() {
 </div>
 
 </div>
+
 <button type="submit">Submit</button>
 
 </form>
@@ -356,51 +414,64 @@ function calculateTotal() {
 
 </div>
 </div>
+
 </body>
 </html>
 '''
 
+
 # ================= SAVE =================
+
 def save_to_excel(data):
+
     df_new = pd.DataFrame([data])
+
     if os.path.exists(excel_file):
+
         df_old = pd.read_excel(excel_file)
+
         df = pd.concat([df_old, df_new], ignore_index=True)
+
     else:
         df = df_new
+
     df.to_excel(excel_file, index=False)
-#================= Test
+
+
+# ================= TEST GOOGLE DRIVE =================
+
 @app.route('/test-drive')
 def test_drive():
 
     try:
 
         if not drive_service:
-            return "Drive service not initialized"
+            return "❌ Drive service not initialized"
 
-        # Test parent folder access
         parent = drive_service.files().get(
             fileId=PARENT_FOLDER_ID,
-            fields='id, name'
+            fields='id,name',
+            supportsAllDrives=True
         ).execute()
-
-        print("Parent Folder Found:", parent)
 
         folder_id = create_folder("TEST_FOLDER", PARENT_FOLDER_ID)
 
         return f"""
-        Parent Folder Access OK<br>
-        Parent Name: {parent['name']}<br>
-        Created Folder ID: {folder_id}
+        ✅ Parent Folder Access OK <br><br>
+
+        Parent Name: {parent['name']} <br><br>
+
+        TEST_FOLDER ID: {folder_id}
         """
 
     except Exception as e:
+
         print("TEST DRIVE ERROR:", str(e))
-        return f"Google Drive Error: {str(e)}"
 
-#============== Helper Function for Google Drive================
+        return f"❌ Google Drive Error: {str(e)}"
 
-#============== Helper Function for Google Drive================
+
+# ================= GOOGLE DRIVE HELPERS =================
 
 def create_folder(name, parent_id):
 
@@ -408,7 +479,7 @@ def create_folder(name, parent_id):
         return None
 
     try:
-        # Check if folder already exists
+
         query = f"""
         name = '{name}'
         and '{parent_id}' in parents
@@ -419,17 +490,21 @@ def create_folder(name, parent_id):
         response = drive_service.files().list(
             q=query,
             spaces='drive',
-            fields='files(id, name)'
+            fields='files(id,name)',
+            supportsAllDrives=True,
+            includeItemsFromAllDrives=True
         ).execute()
 
         folders = response.get('files', [])
 
-        # If folder exists, return existing folder ID
+        # Return existing folder
         if folders:
+
             print(f"Folder already exists: {name}")
+
             return folders[0]['id']
 
-        # Create new folder if not exists
+        # Create new folder
         file_metadata = {
             'name': name,
             'mimeType': 'application/vnd.google-apps.folder',
@@ -438,7 +513,8 @@ def create_folder(name, parent_id):
 
         folder = drive_service.files().create(
             body=file_metadata,
-            fields='id'
+            fields='id',
+            supportsAllDrives=True
         ).execute()
 
         print(f"Folder created: {name}")
@@ -446,17 +522,16 @@ def create_folder(name, parent_id):
         return folder.get('id')
 
     except Exception as e:
-        print("Google Drive Folder Error:", str(e))
+
+        print("FOLDER ERROR:", str(e))
+
         return None
 
 
 def upload_file(file, folder_id):
 
-    if not drive_service:
+    if not drive_service or not folder_id:
         return
-
-    from googleapiclient.http import MediaIoBaseUpload
-    import io
 
     filename = secure_filename(file.filename)
 
@@ -476,20 +551,29 @@ def upload_file(file, folder_id):
     drive_service.files().create(
         body=file_metadata,
         media_body=media,
-        fields='id'
+        fields='id',
+        supportsAllDrives=True
     ).execute()
 
-# ================= DASHBOARD LOGIC =================
-@app.route('/dashboard', methods=['GET','POST'])
+    print(f"Uploaded: {filename}")
+
+
+# ================= DASHBOARD =================
+
+@app.route('/dashboard', methods=['GET', 'POST'])
 def dashboard():
+
     if 'user' not in session:
         return redirect('/')
 
     success = False
 
     if request.method == 'POST':
+
         try:
+
             boys = int(request.form.get('boys') or 0)
+
             girls = int(request.form.get('girls') or 0)
 
             school_name = request.form['school'].strip()
@@ -497,33 +581,52 @@ def dashboard():
             if not school_name:
                 return "School name is required"
 
-            print("Creating main folder...")
+            # Create Main School Folder
+            school_folder_id = create_folder(
+                school_name,
+                PARENT_FOLDER_ID
+            )
 
-            # Create main school folder
-            school_folder_id = create_folder(school_name, PARENT_FOLDER_ID)
-            print("School Folder ID:", school_folder_id)
+            print("School Folder:", school_folder_id)
 
-            # Create subfolders
+            # Create Subfolders
             folders = {
-                "smart_class": create_folder("Smart_Class", school_folder_id),
-                "ro": create_folder("RO", school_folder_id),
-                "sanitary": create_folder("Sanitary", school_folder_id),
-                "toilet": create_folder("Toilet", school_folder_id)
+
+                "smart_class": create_folder(
+                    "Smart_Class",
+                    school_folder_id
+                ),
+
+                "ro": create_folder(
+                    "RO",
+                    school_folder_id
+                ),
+
+                "sanitary": create_folder(
+                    "Sanitary",
+                    school_folder_id
+                ),
+
+                "toilet": create_folder(
+                    "Toilet",
+                    school_folder_id
+                )
             }
 
-            print("Subfolders created:", folders)
-
-            # Upload files
+            # Upload Images
             for field, folder_id in folders.items():
+
                 files = request.files.getlist(field)
 
                 for file in files:
+
                     if file and file.filename != "" and allowed_file(file.filename):
-                        print(f"Uploading {file.filename} to {field}")
+
                         upload_file(file, folder_id)
 
-            # Save Excel data
+            # Save Excel Data
             data = {
+
                 "UDISC Number": request.form['udisc'],
                 "School Name": school_name,
                 "Location": request.form['location'],
@@ -538,28 +641,52 @@ def dashboard():
             }
 
             save_to_excel(data)
+
             success = True
 
         except Exception as e:
-            print("ERROR:", str(e))
+
+            print("DASHBOARD ERROR:", str(e))
+
             return f"Error occurred: {str(e)}"
 
-    return render_template_string(dashboard_page, success=success)
+    return render_template_string(
+        dashboard_page,
+        success=success
+    )
+
 
 # ================= EXPORT =================
+
 @app.route('/export')
 def export():
+
     if os.path.exists(excel_file):
-        return send_file(excel_file, as_attachment=True)
+
+        return send_file(
+            excel_file,
+            as_attachment=True
+        )
+
     return "No data"
 
 
 # ================= LOGOUT =================
+
 @app.route('/logout')
 def logout():
-    session.pop('user', None)
-    return redirect('/')
-# ================= RUN =================
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
 
+    session.pop('user', None)
+
+    return redirect('/')
+
+
+# ================= RUN =================
+
+if __name__ == "__main__":
+
+    app.run(
+        host="0.0.0.0",
+        port=10000,
+        debug=True
+    )
