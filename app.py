@@ -10,7 +10,6 @@ import os
 # Google Drive
 #===============================
 from werkzeug.utils import secure_filename
-from googleapiclient.discovery import build
 from google.oauth2 import service_account
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
