@@ -377,23 +377,54 @@ def test_drive():
 
 #============== Helper Function for Google Drive================
 
+#============== Helper Function for Google Drive================
+
 def create_folder(name, parent_id):
 
     if not drive_service:
         return None
 
-    file_metadata = {
-        'name': name,
-        'mimeType': 'application/vnd.google-apps.folder',
-        'parents': [parent_id]
-    }
+    try:
+        # Check if folder already exists
+        query = f"""
+        name = '{name}'
+        and '{parent_id}' in parents
+        and mimeType = 'application/vnd.google-apps.folder'
+        and trashed = false
+        """
 
-    folder = drive_service.files().create(
-        body=file_metadata,
-        fields='id'
-    ).execute()
+        response = drive_service.files().list(
+            q=query,
+            spaces='drive',
+            fields='files(id, name)'
+        ).execute()
 
-    return folder.get('id')
+        folders = response.get('files', [])
+
+        # If folder exists, return existing folder ID
+        if folders:
+            print(f"Folder already exists: {name}")
+            return folders[0]['id']
+
+        # Create new folder if not exists
+        file_metadata = {
+            'name': name,
+            'mimeType': 'application/vnd.google-apps.folder',
+            'parents': [parent_id]
+        }
+
+        folder = drive_service.files().create(
+            body=file_metadata,
+            fields='id'
+        ).execute()
+
+        print(f"Folder created: {name}")
+
+        return folder.get('id')
+
+    except Exception as e:
+        print("Google Drive Folder Error:", str(e))
+        return None
 
 
 def upload_file(file, folder_id):
