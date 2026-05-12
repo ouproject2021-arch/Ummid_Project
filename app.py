@@ -9,6 +9,7 @@ import os
 # ========================
 # Google Drive
 #===============================
+from werkzeug.utils import secure_filename
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
 
@@ -23,15 +24,21 @@ SCOPES = ['https://www.googleapis.com/auth/drive']
 creds_json = os.environ.get("GOOGLE_CREDENTIALS")
 
 if not creds_json:
-    raise Exception("Missing GOOGLE_CREDENTIALS")
+    print("GOOGLE_CREDENTIALS environment variable not found")
+    creds_json = None
 
-creds_dict = json.loads(creds_json)
-creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+if creds_json:
+    creds_dict = json.loads(creds_json)
+    creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
 
-creds = service_account.Credentials.from_service_account_info(
-    creds_dict, scopes=SCOPES)
+    creds = service_account.Credentials.from_service_account_info(
+        creds_dict,
+        scopes=SCOPES
+    )
 
-drive_service = build('drive', 'v3', credentials=creds)
+    drive_service = build('drive', 'v3', credentials=creds)
+else:
+    drive_service = None
 
 PARENT_FOLDER_ID = '1SzrOrn93f3SDRBmWcYwhrLH3YUeQ-cuy'  # ← replace this
 
@@ -372,25 +379,44 @@ def test_drive():
 #============== Helper Function for Google Drive================
 
 def create_folder(name, parent_id):
+
+    if not drive_service:
+        return None
+
     file_metadata = {
         'name': name,
         'mimeType': 'application/vnd.google-apps.folder',
         'parents': [parent_id]
     }
-    folder = drive_service.files().create(body=file_metadata, fields='id').execute()
+
+    folder = drive_service.files().create(
+        body=file_metadata,
+        fields='id'
+    ).execute()
+
     return folder.get('id')
 
 
 def upload_file(file, folder_id):
+
+    if not drive_service:
+        return
+
     from googleapiclient.http import MediaIoBaseUpload
     import io
 
+    filename = secure_filename(file.filename)
+
     file_stream = io.BytesIO(file.read())
 
-    media = MediaIoBaseUpload(file_stream, mimetype=file.content_type)
+    media = MediaIoBaseUpload(
+        file_stream,
+        mimetype=file.content_type,
+        resumable=True
+    )
 
     file_metadata = {
-        'name': file.filename,
+        'name': filename,
         'parents': [folder_id]
     }
 
@@ -439,7 +465,7 @@ def dashboard():
                 files = request.files.getlist(field)
 
                 for file in files:
-                    if file and file.filename != "":
+                    if file and file.filename != "" and allowed_file(file.filename):
                         print(f"Uploading {file.filename} to {field}")
                         upload_file(file, folder_id)
 
