@@ -22,10 +22,11 @@ SCOPES = ['https://www.googleapis.com/auth/drive']
 
 creds_json = os.environ.get("GOOGLE_CREDENTIALS")
 
-if not creds_json:
-    print("GOOGLE_CREDENTIALS environment variable not found")
-    creds_json = None
+print("ENV CHECK:", creds_json is not None)
 
+if not creds_json:
+    raise Exception("GOOGLE_CREDENTIALS environment variable missing")
+    
 if creds_json:
     creds_dict = json.loads(creds_json)
     creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
