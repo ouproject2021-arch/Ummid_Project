@@ -195,17 +195,19 @@ body {
     margin:0;
     background: linear-gradient(120deg, #e3f2fd, #f1f8e9);
 }
-
+.header {
+    background:#1b5e20;
+    color:white;
+    padding:12px 16px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
 .header-logo {
     width: 40px;
     height: 40px;
     object-fit: contain;
     margin-right: 10px;
-}
-
-.header img {
-    width:36px;
-    margin-right:8px;
 }
 
 .header a {
@@ -303,12 +305,14 @@ function calculateTotal() {
     <div style="display:flex; align-items:center;">
 
         <img 
-    src="{{ url_for('static', filename='logo.png') }}"
-    class="header-logo"
-    alt="Logo"
->
+            src="{{ url_for('static', filename='logo.png') }}"
+            class="header-logo"
+            alt="Logo"
+        >
 
-        <strong>Ummid Foundation (Hope for Human)</strong>
+        <strong>
+            Ummid Foundation (Hope for Human)
+        </strong>
 
     </div>
 
@@ -316,6 +320,8 @@ function calculateTotal() {
         <a href="/export">Download Excel</a>
         <a href="/logout">Logout</a>
     </div>
+
+</div>
 
 </div>
 
