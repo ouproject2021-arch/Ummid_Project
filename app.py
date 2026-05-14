@@ -84,6 +84,7 @@ login_page = '''
 <!DOCTYPE html>
 <html>
 <head>
+<meta charset="UTF-8">
 <style>
 body {
     font-family: Arial;
@@ -102,11 +103,12 @@ body {
     text-align:center;
     width:320px;
 }
-.logo { width:80px; }
-.brand {
-    font-weight:bold;
-    color:#2e7d32;
-    margin:10px 0;
+.logo {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto 10px auto;
 }
 input {
     padding:10px;
@@ -124,7 +126,11 @@ button {
 <body>
 
 <div class="login-box">
-    <img src="{{ url_for('static', filename='logo.png') }}" class="logo">
+    <img 
+    src="{{ url_for('static', filename='logo.png') }}" 
+    class="logo"
+    alt="Logo"
+>
     <div class="brand">
         Ummid Foundation (Hope for Human)
     </div>
@@ -174,6 +180,7 @@ dashboard_page = '''
 <html>
 
 <head>
+<meta charset="UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -189,14 +196,11 @@ body {
     background: linear-gradient(120deg, #e3f2fd, #f1f8e9);
 }
 
-.header {
-    background:#1b5e20;
-    color:white;
-    padding:12px 16px;
-    display:flex;
-    flex-wrap:wrap;
-    justify-content:space-between;
-    align-items:center;
+.header-logo {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    margin-right: 10px;
 }
 
 .header img {
@@ -298,7 +302,11 @@ function calculateTotal() {
 
     <div style="display:flex; align-items:center;">
 
-        <img src="{{ url_for('static', filename='logo.png') }}" class="logo">
+        <img 
+    src="{{ url_for('static', filename='logo.png') }}"
+    class="header-logo"
+    alt="Logo"
+>
 
         <strong>Ummid Foundation (Hope for Human)</strong>
 
