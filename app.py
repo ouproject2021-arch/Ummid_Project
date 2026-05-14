@@ -246,7 +246,6 @@ def dashboard():
         try:
 
             boys = int(request.form.get('boys') or 0)
-
             girls = int(request.form.get('girls') or 0)
 
             school_name = request.form['school'].strip()
@@ -255,42 +254,36 @@ def dashboard():
                 return "School name is required"
 
             # Create Main School Folder
-           school_folder_id = create_folder(school_name, PARENT_FOLDER_ID)
+            school_folder_id = create_folder(school_name, PARENT_FOLDER_ID)
 
-if not school_folder_id:
-    return "❌ Failed to create School folder in Google Drive"
+            if not school_folder_id:
+                return "❌ Failed to create School folder in Google Drive"
+
             print("School Folder:", school_folder_id)
 
             # Create Subfolders
-            folders = {}
-
-if school_folder_id:
-
-    folders = {
-        "smart_class": create_folder("Smart_Class", school_folder_id),
-        "ro": create_folder("RO", school_folder_id),
-        "sanitary": create_folder("Sanitary", school_folder_id),
-        "toilet": create_folder("Toilet", school_folder_id)
-    }
-else:
-    return "❌ School folder not created. Cannot proceed."
+            folders = {
+                "smart_class": create_folder("Smart_Class", school_folder_id),
+                "ro": create_folder("RO", school_folder_id),
+                "sanitary": create_folder("Sanitary", school_folder_id),
+                "toilet": create_folder("Toilet", school_folder_id)
+            }
 
             # Upload Images
             for field, folder_id in folders.items():
 
-    if not folder_id:
-        print(f"⚠ Skipping {field} (folder missing)")
-        continue
+                if not folder_id:
+                    print(f"⚠ Skipping {field} (folder missing)")
+                    continue
 
-    files = request.files.getlist(field)
+                files = request.files.getlist(field)
 
-    for file in files:
-        if file and file.filename and allowed_file(file.filename):
-            upload_file(file, folder_id)
-            
+                for file in files:
+                    if file and file.filename and allowed_file(file.filename):
+                        upload_file(file, folder_id)
+
             # Save Excel Data
             data = {
-
                 "UDISC Number": request.form['udisc'],
                 "School Name": school_name,
                 "Location": request.form['location'],
@@ -309,15 +302,10 @@ else:
             success = True
 
         except Exception as e:
-
             print("DASHBOARD ERROR:", str(e))
-
             return f"Error occurred: {str(e)}"
 
-    return render_template(
-    "dashboard.html",
-    success=success
-)
+    return render_template("dashboard.html", success=success)
 
 
 # ================= EXPORT =================
