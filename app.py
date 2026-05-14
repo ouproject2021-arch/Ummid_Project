@@ -240,17 +240,33 @@ def create_folder(name, parent_id):
 def upload_file(file, folder_id):
 
     if not drive_service or not folder_id:
+        print("❌ Drive service or folder_id missing")
         return
 
     try:
 
         filename = secure_filename(file.filename)
 
+        # ✅ IMPORTANT: reset file pointer
+        file.seek(0)
+
         file_stream = io.BytesIO(file.read())
+
+        # ✅ Force correct MIME type for PNG/JPG/JPEG
+        mimetype = file.content_type
+
+        if not mimetype:
+            ext = filename.rsplit('.', 1)[1].lower()
+            if ext == "png":
+                mimetype = "image/png"
+            elif ext in ["jpg", "jpeg"]:
+                mimetype = "image/jpeg"
+            else:
+                mimetype = "application/octet-stream"
 
         media = MediaIoBaseUpload(
             file_stream,
-            mimetype=file.content_type,
+            mimetype=mimetype,
             resumable=True
         )
 
@@ -262,17 +278,15 @@ def upload_file(file, folder_id):
         drive_service.files().create(
             body=file_metadata,
             media_body=media,
-            fields='id',
-            supportsAllDrives=True
+            fields='id, parents',
+            supportsAllDrives=True,
+            uploadType='multipart'   # ✅ CRITICAL FIX
         ).execute()
 
-        print(f"✅ Uploaded: {filename}")
+        print(f"✅ Uploaded: {filename} → Folder: {folder_id}")
 
     except Exception as e:
-
-        print("❌ FILE UPLOAD ERROR")
-        print(repr(e))
-
+        print("❌ FILE UPLOAD ERROR:", repr(e))
 
 # ================= DASHBOARD =================
 
