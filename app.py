@@ -274,7 +274,7 @@ def dashboard():
             boys = int(request.form.get('boys') or 0)
             girls = int(request.form.get('girls') or 0)
 
-            school_name = request.form['school'].strip()
+            school_name = request.form.get('school', '').strip()
 
             if not school_name:
                 return "School name is required"
@@ -310,7 +310,7 @@ def dashboard():
 
             # Save Excel Data
             data = {
-                "UDISC Number": request.form['udisc'],
+                "UDISC Number": request.form.get['udisc'],
                 "School Name": school_name,
                 "Location": request.form['location'],
                 "Year": request.form['year'],
