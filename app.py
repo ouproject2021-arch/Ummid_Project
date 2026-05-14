@@ -143,6 +143,10 @@ button {
         <input type="password" name="password" placeholder="Password"><br><br>
 
         <button type="submit">Login</button>
+
+        <h3>TEST IMAGE</h3>
+
+<img src="/static/logo.png" width="200">
     </form>
 
     <p style="color:red;">{{error}}</p>
