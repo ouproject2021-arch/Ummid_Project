@@ -107,19 +107,45 @@ def login():
 
 def save_to_excel(data):
 
-    df_new = pd.DataFrame([data])
+    try:
 
-    if os.path.exists(excel_file):
+        df_new = pd.DataFrame([data])
 
-        df_old = pd.read_excel(excel_file)
+        # If file exists, try reading
+        if os.path.exists(excel_file):
 
-        df = pd.concat([df_old, df_new], ignore_index=True)
+            try:
+                df_old = pd.read_excel(excel_file, engine='openpyxl')
 
-    else:
-        df = df_new
+                df = pd.concat(
+                    [df_old, df_new],
+                    ignore_index=True
+                )
 
-    df.to_excel(excel_file, index=False)
+            except Exception as e:
 
+                print("Excel read failed:", str(e))
+
+                # create fresh dataframe
+                df = df_new
+
+        else:
+            df = df_new
+
+        # Save safely
+        df.to_excel(
+            excel_file,
+            index=False,
+            engine='openpyxl'
+        )
+
+        print("✅ Excel Saved Successfully")
+
+    except Exception as e:
+
+        print("❌ EXCEL SAVE ERROR:", str(e))
+
+        raise e
 
 # ================= TEST GOOGLE DRIVE =================
 
