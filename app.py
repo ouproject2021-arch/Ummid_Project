@@ -182,18 +182,31 @@ def test_drive():
 
 # ================= GOOGLE DRIVE HELPERS =================
 
+# ================= GOOGLE DRIVE HELPERS =================
+
 def create_folder(name, parent_id):
 
-    if not drive_service or not parent_id:
-        print("Drive not ready or invalid parent_id")
+    if not drive_service:
+        print("❌ Drive service not initialized")
+        return None
+
+    if not parent_id:
+        print("❌ Parent folder ID missing")
         return None
 
     try:
+
+        print(f"📁 Creating folder: {name}")
+
+        # =========================
+        # CHECK EXISTING FOLDER
+        # =========================
+
         query = (
-            f"name = '{name}' and "
+            f"name='{name}' and "
             f"'{parent_id}' in parents and "
-            "mimeType = 'application/vnd.google-apps.folder' and "
-            "trashed = false"
+            f"mimeType='application/vnd.google-apps.folder' and "
+            f"trashed=false"
         )
 
         response = drive_service.files().list(
@@ -206,27 +219,40 @@ def create_folder(name, parent_id):
 
         files = response.get("files", [])
 
+        # If folder already exists
         if files:
+            print(f"✅ Folder already exists: {name}")
             return files[0]["id"]
 
+        # =========================
+        # CREATE NEW FOLDER
+        # =========================
+
         file_metadata = {
-            "name": name,
-            "mimeType": "application/vnd.google-apps.folder",
-            "parents": [parent_id]
+            'name': name,
+            'mimeType': 'application/vnd.google-apps.folder',
+            'parents': [parent_id]
         }
 
         folder = drive_service.files().create(
             body=file_metadata,
-            fields="id",
+            fields='id',
             supportsAllDrives=True
         ).execute()
 
-        return folder.get("id")
+        folder_id = folder.get('id')
+
+        print(f"✅ Folder created successfully: {folder_id}")
+
+        return folder_id
 
     except Exception as e:
-        print("❌ FOLDER ERROR:", str(e))
-        return None
 
+        print("❌ FOLDER CREATION ERROR:")
+        print(str(e))
+
+        return None
+# upload File
 def upload_file(file, folder_id):
 
     if not drive_service or not folder_id:
