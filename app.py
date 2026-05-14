@@ -247,27 +247,16 @@ def upload_file(file, folder_id):
 
         filename = secure_filename(file.filename)
 
-        # ✅ IMPORTANT: reset file pointer
-        file.seek(0)
+        print("📤 Uploading:", filename)
 
-        file_stream = io.BytesIO(file.read())
+        # ✅ FIX 1: Always reset pointer
+        file.stream.seek(0)
 
-        # ✅ Force correct MIME type for PNG/JPG/JPEG
-        mimetype = file.content_type
-
-        if not mimetype:
-            ext = filename.rsplit('.', 1)[1].lower()
-            if ext == "png":
-                mimetype = "image/png"
-            elif ext in ["jpg", "jpeg"]:
-                mimetype = "image/jpeg"
-            else:
-                mimetype = "application/octet-stream"
-
+        # ✅ FIX 2: DO NOT wrap in BytesIO (this is the real bug)
         media = MediaIoBaseUpload(
-            file_stream,
-            mimetype=mimetype,
-            resumable=True
+            file.stream,
+            mimetype=file.content_type or "application/octet-stream",
+            resumable=False   # ✅ IMPORTANT FIX for PNG stability
         )
 
         file_metadata = {
@@ -280,11 +269,10 @@ def upload_file(file, folder_id):
             media_body=media,
             fields='id, parents',
             supportsAllDrives=True,
-            uploadType='multipart'   # ✅ CRITICAL FIX
+            uploadType='multipart'
         ).execute()
 
-        print(f"✅ Uploaded: {filename} → Folder: {folder_id}")
-
+        print(f"✅ Uploaded SUCCESS: {filename}")
     except Exception as e:
         print("❌ FILE UPLOAD ERROR:", repr(e))
 
