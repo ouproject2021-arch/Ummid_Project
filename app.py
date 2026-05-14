@@ -64,7 +64,11 @@ except Exception as e:
 
 PARENT_FOLDER_ID = '1SzrOrn93f3SDRBmWcYwhrLH3YUeQ-cuy'
 
-app = Flask(__name__)
+app = Flask(
+    __name__,
+    static_folder='static',
+    template_folder='templates'
+)
 app.secret_key = "secret123"
 
 excel_file = "school_data.xlsx"
