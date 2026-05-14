@@ -28,16 +28,15 @@ SCOPES = ['https://www.googleapis.com/auth/drive']
 drive_service = None
 
 try:
-
     creds_json = os.environ.get("GOOGLE_CREDENTIALS")
 
     if not creds_json:
-        raise Exception("GOOGLE_CREDENTIALS environment variable not found")
+        raise Exception("GOOGLE_CREDENTIALS not found in environment")
 
     creds_dict = json.loads(creds_json)
 
-    # Fix private key formatting
-    creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+    if "private_key" in creds_dict:
+        creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
 
     creds = service_account.Credentials.from_service_account_info(
         creds_dict,
@@ -47,16 +46,15 @@ try:
     drive_service = build(
         'drive',
         'v3',
-        credentials=creds
+        credentials=creds,
+        cache_discovery=False
     )
 
     print("✅ Google Drive Connected Successfully")
 
 except Exception as e:
-    print("❌ GOOGLE DRIVE CONNECTION ERROR")
-    print(str(e))
+    print("❌ GOOGLE DRIVE CONNECTION ERROR:", str(e))
     drive_service = None
-
 
 # ========================
 # GOOGLE DRIVE PARENT FOLDER
@@ -160,17 +158,17 @@ def test_drive():
 
 def create_folder(name, parent_id):
 
-    if not drive_service:
+    if not drive_service or not parent_id:
+        print("Drive not ready or invalid parent_id")
         return None
 
     try:
-
-        query = f"""
-        name = '{name}'
-        and '{parent_id}' in parents
-        and mimeType = 'application/vnd.google-apps.folder'
-        and trashed = false
-        """
+        query = (
+            f"name = '{name}' and "
+            f"'{parent_id}' in parents and "
+            "mimeType = 'application/vnd.google-apps.folder' and "
+            "trashed = false"
+        )
 
         response = drive_service.files().list(
             q=query,
@@ -180,38 +178,28 @@ def create_folder(name, parent_id):
             includeItemsFromAllDrives=True
         ).execute()
 
-        folders = response.get('files', [])
+        files = response.get("files", [])
 
-        # Return existing folder
-        if folders:
+        if files:
+            return files[0]["id"]
 
-            print(f"Folder already exists: {name}")
-
-            return folders[0]['id']
-
-        # Create new folder
         file_metadata = {
-            'name': name,
-            'mimeType': 'application/vnd.google-apps.folder',
-            'parents': [parent_id]
+            "name": name,
+            "mimeType": "application/vnd.google-apps.folder",
+            "parents": [parent_id]
         }
 
         folder = drive_service.files().create(
             body=file_metadata,
-            fields='id',
+            fields="id",
             supportsAllDrives=True
         ).execute()
 
-        print(f"Folder created: {name}")
-
-        return folder.get('id')
+        return folder.get("id")
 
     except Exception as e:
-
-        print("FOLDER ERROR:", str(e))
-
+        print("❌ FOLDER ERROR:", str(e))
         return None
-
 
 def upload_file(file, folder_id):
 
@@ -267,48 +255,39 @@ def dashboard():
                 return "School name is required"
 
             # Create Main School Folder
-            school_folder_id = create_folder(
-                school_name,
-                PARENT_FOLDER_ID
-            )
+           school_folder_id = create_folder(school_name, PARENT_FOLDER_ID)
 
+if not school_folder_id:
+    return "❌ Failed to create School folder in Google Drive"
             print("School Folder:", school_folder_id)
 
             # Create Subfolders
-            folders = {
+            folders = {}
 
-                "smart_class": create_folder(
-                    "Smart_Class",
-                    school_folder_id
-                ),
+if school_folder_id:
 
-                "ro": create_folder(
-                    "RO",
-                    school_folder_id
-                ),
-
-                "sanitary": create_folder(
-                    "Sanitary",
-                    school_folder_id
-                ),
-
-                "toilet": create_folder(
-                    "Toilet",
-                    school_folder_id
-                )
-            }
+    folders = {
+        "smart_class": create_folder("Smart_Class", school_folder_id),
+        "ro": create_folder("RO", school_folder_id),
+        "sanitary": create_folder("Sanitary", school_folder_id),
+        "toilet": create_folder("Toilet", school_folder_id)
+    }
+else:
+    return "❌ School folder not created. Cannot proceed."
 
             # Upload Images
             for field, folder_id in folders.items():
 
-                files = request.files.getlist(field)
+    if not folder_id:
+        print(f"⚠ Skipping {field} (folder missing)")
+        continue
 
-                for file in files:
+    files = request.files.getlist(field)
 
-                    if file and file.filename != "" and allowed_file(file.filename):
-
-                        upload_file(file, folder_id)
-
+    for file in files:
+        if file and file.filename and allowed_file(file.filename):
+            upload_file(file, folder_id)
+            
             # Save Excel Data
             data = {
 
