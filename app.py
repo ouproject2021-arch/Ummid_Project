@@ -259,6 +259,8 @@ def upload_file(file, folder_id):
 
 # ================= DASHBOARD =================
 
+# ================= DASHBOARD =================
+
 @app.route('/dashboard', methods=['GET', 'POST'])
 def dashboard():
 
@@ -276,77 +278,87 @@ def dashboard():
 
             school_name = request.form.get('school', '').strip()
 
+            # NEW
+            udisc_number = request.form.get('udisc', '').strip()
+
             if not school_name:
                 return "School name is required"
 
-           # UDISC Number
-udisc_number = request.form.get('udisc', '').strip()
+            if not udisc_number:
+                return "UDISC number is required"
 
-# Create Main School Folder
-main_folder_name = f"{school_name}_{udisc_number}"
+            # =========================
+            # CREATE MAIN SCHOOL FOLDER
+            # =========================
 
-school_folder_id = create_folder(
-    main_folder_name,
-    PARENT_FOLDER_ID
-)
+            main_folder_name = f"{school_name}_{udisc_number}"
+
+            school_folder_id = create_folder(
+                main_folder_name,
+                PARENT_FOLDER_ID
+            )
 
             if not school_folder_id:
                 return "❌ Failed to create School folder in Google Drive"
 
             print("School Folder:", school_folder_id)
 
-                     # Create Subfolders
-folders = {
-    "smart_class": create_folder(
-        "Smart_Class",
-        school_folder_id
-    ),
+            # =========================
+            # CREATE 4 SUBFOLDERS
+            # =========================
 
-    "ro": create_folder(
-        "RO",
-        school_folder_id
-    ),
+            folders = {
+                "smart_class": create_folder(
+                    "Smart_Class",
+                    school_folder_id
+                ),
 
-    "sanitary": create_folder(
-        "Sanitary",
-        school_folder_id
-    ),
+                "ro": create_folder(
+                    "RO",
+                    school_folder_id
+                ),
 
-    "toilet": create_folder(
-        "Toilet",
-        school_folder_id
-    )
-}
+                "sanitary": create_folder(
+                    "Sanitary",
+                    school_folder_id
+                ),
 
-print("Created folders:", folders)
+                "toilet": create_folder(
+                    "Toilet",
+                    school_folder_id
+                )
+            }
 
-           # Upload Images
-for field, folder_id in folders.items():
+            print("Created folders:", folders)
 
-    if not folder_id:
-        print(f"⚠ Folder not created for: {field}")
-        continue
+            # =========================
+            # UPLOAD FILES
+            # =========================
 
-    files = request.files.getlist(field)
+            for field, folder_id in folders.items():
 
-    print(f"Uploading to folder: {field}")
+                if not folder_id:
+                    print(f"⚠ Skipping {field} folder")
+                    continue
 
-    for file in files:
+                files = request.files.getlist(field)
 
-        if file and file.filename:
+                for file in files:
 
-            if allowed_file(file.filename):
+                    if (
+                        file and
+                        file.filename and
+                        allowed_file(file.filename)
+                    ):
 
-                print("Uploading:", file.filename)
+                        upload_file(file, folder_id)
 
-                upload_file(file, folder_id)
+            # =========================
+            # SAVE EXCEL DATA
+            # =========================
 
-            else:
-                print("Invalid file:", file.filename)
-
-            # Save Excel Data
             data = {
-                "UDISC Number": request.form.get['udisc'],
+                "UDISC Number": udisc_number,
                 "School Name": school_name,
                 "Location": request.form['location'],
                 "Year": request.form['year'],
@@ -364,11 +376,15 @@ for field, folder_id in folders.items():
             success = True
 
         except Exception as e:
+
             print("DASHBOARD ERROR:", str(e))
+
             return f"Error occurred: {str(e)}"
 
-    return render_template("dashboard.html", success=success)
-
+    return render_template(
+        "dashboard.html",
+        success=success
+    )
 
 # ================= EXPORT =================
 
