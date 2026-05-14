@@ -3,7 +3,7 @@
 # Tech: Python Flask + Excel + Image Upload
 # ===============================
 
-from flask import Flask, render_template_string, request, redirect, session, send_file
+from flask import Flask, render_template_string, request, redirect, session, send_file, url_for
 import pandas as pd
 import os
 from dotenv import load_dotenv
@@ -124,8 +124,7 @@ button {
 <body>
 
 <div class="login-box">
-    <img src="/static/logo.png" class="logo">
-
+    <img src="{{ url_for('static', filename='logo.png') }}" class="logo">
     <div class="brand">
         Ummid Foundation (Hope for Human)
     </div>
@@ -299,7 +298,7 @@ function calculateTotal() {
 
     <div style="display:flex; align-items:center;">
 
-        <img src="/static/logo.png">
+        <img src="{{ url_for('static', filename='logo.png') }}" class="logo">
 
         <strong>Ummid Foundation (Hope for Human)</strong>
 
