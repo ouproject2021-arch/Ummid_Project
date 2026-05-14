@@ -197,6 +197,21 @@ def create_folder(name, parent_id):
     try:
 
         print(f"📁 Creating folder: {name}")
+        print(f"📁 Parent ID: {parent_id}")
+
+        # =========================
+        # GET PARENT DRIVE ID
+        # =========================
+
+        parent_info = drive_service.files().get(
+            fileId=parent_id,
+            fields='id,name,driveId',
+            supportsAllDrives=True
+        ).execute()
+
+        drive_id = parent_info.get("driveId")
+
+        print("✅ Drive ID:", drive_id)
 
         # =========================
         # CHECK EXISTING FOLDER
@@ -210,17 +225,18 @@ def create_folder(name, parent_id):
         )
 
         response = drive_service.files().list(
-    q=query,
-    spaces='drive',
-    fields='files(id,name)',
-    supportsAllDrives=True,
-    includeItemsFromAllDrives=True,
-    corpora='allDrives'
-).execute()
+            q=query,
+            spaces='drive',
+            corpora='drive',
+            driveId=drive_id,
+            includeItemsFromAllDrives=True,
+            supportsAllDrives=True,
+            fields='files(id,name)'
+        ).execute()
+
         files = response.get("files", [])
 
-      
-        # If folder already exists
+        # Folder already exists
         if files:
             print(f"✅ Folder already exists: {name}")
             return files[0]["id"]
@@ -236,11 +252,10 @@ def create_folder(name, parent_id):
         }
 
         folder = drive_service.files().create(
-    body=file_metadata,
-    fields="id",
-    supportsAllDrives=True,
-    supportsTeamDrives=True
-).execute()
+            body=file_metadata,
+            fields='id',
+            supportsAllDrives=True
+        ).execute()
 
         folder_id = folder.get('id')
 
@@ -250,8 +265,8 @@ def create_folder(name, parent_id):
 
     except Exception as e:
 
-        print("❌ FOLDER CREATION ERROR:")
-        print(str(e))
+        print("❌ FOLDER CREATION ERROR")
+        print(repr(e))
 
         return None
 # upload File
@@ -260,29 +275,36 @@ def upload_file(file, folder_id):
     if not drive_service or not folder_id:
         return
 
-    filename = secure_filename(file.filename)
+    try:
 
-    file_stream = io.BytesIO(file.read())
+        filename = secure_filename(file.filename)
 
-    media = MediaIoBaseUpload(
-        file_stream,
-        mimetype=file.content_type,
-        resumable=True
-    )
+        file_stream = io.BytesIO(file.read())
 
-    file_metadata = {
-        'name': filename,
-        'parents': [folder_id]
-    }
+        media = MediaIoBaseUpload(
+            file_stream,
+            mimetype=file.content_type,
+            resumable=True
+        )
 
-    drive_service.files().create(
-        body=file_metadata,
-        media_body=media,
-        fields='id',
-        supportsAllDrives=True
-    ).execute()
+        file_metadata = {
+            'name': filename,
+            'parents': [folder_id]
+        }
 
-    print(f"Uploaded: {filename}")
+        drive_service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id',
+            supportsAllDrives=True
+        ).execute()
+
+        print(f"✅ Uploaded: {filename}")
+
+    except Exception as e:
+
+        print("❌ FILE UPLOAD ERROR")
+        print(repr(e))
 
 
 # ================= DASHBOARD =================
