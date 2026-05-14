@@ -210,15 +210,16 @@ def create_folder(name, parent_id):
         )
 
         response = drive_service.files().list(
-            q=query,
-            spaces='drive',
-            fields='files(id,name)',
-            supportsAllDrives=True,
-            includeItemsFromAllDrives=True
-        ).execute()
-
+    q=query,
+    spaces='drive',
+    fields='files(id,name)',
+    supportsAllDrives=True,
+    includeItemsFromAllDrives=True,
+    corpora='allDrives'
+).execute()
         files = response.get("files", [])
 
+      
         # If folder already exists
         if files:
             print(f"✅ Folder already exists: {name}")
@@ -235,10 +236,11 @@ def create_folder(name, parent_id):
         }
 
         folder = drive_service.files().create(
-            body=file_metadata,
-            fields='id',
-            supportsAllDrives=True
-        ).execute()
+    body=file_metadata,
+    fields="id",
+    supportsAllDrives=True,
+    supportsTeamDrives=True
+).execute()
 
         folder_id = folder.get('id')
 
