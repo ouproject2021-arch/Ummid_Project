@@ -2,26 +2,22 @@
 <html>
 
 <head>
-
 <meta charset="UTF-8">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Dashboard</title>
-
 <style>
 
-*{
-    box-sizing:border-box;
+* {
+    box-sizing: border-box;
 }
 
-body{
-    font-family:'Segoe UI',Arial;
+body {
+    font-family: 'Segoe UI', Arial;
     margin:0;
-    background:linear-gradient(120deg,#e3f2fd,#f1f8e9);
+    background: linear-gradient(120deg, #e3f2fd, #f1f8e9);
 }
-
-.header{
+.header {
     background:#1b5e20;
     color:white;
     padding:12px 16px;
@@ -29,32 +25,27 @@ body{
     justify-content:space-between;
     align-items:center;
 }
-
-.header-left{
-    display:flex;
-    align-items:center;
+.header-logo {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    margin-right: 10px;
 }
 
-.header-logo{
-    width:45px;
-    height:45px;
-    object-fit:contain;
-    margin-right:10px;
-}
-
-.header a{
+.header a {
     color:white;
     text-decoration:none;
     margin-left:10px;
+    font-size:14px;
 }
 
-.container{
+.container {
     display:flex;
     justify-content:center;
     padding:15px;
 }
 
-.form-card{
+.form-card {
     background:white;
     padding:20px;
     border-radius:12px;
@@ -63,33 +54,31 @@ body{
     box-shadow:0 6px 18px rgba(0,0,0,0.15);
 }
 
-.form-grid{
+.form-grid {
     display:grid;
-    grid-template-columns:repeat(2,1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap:15px;
 }
 
-.form-group{
+.form-group {
     display:flex;
     flex-direction:column;
 }
 
-.form-group.full{
-    grid-column:span 2;
+.form-group.full {
+    grid-column: span 2;
 }
 
-h2{
+h2 {
     text-align:center;
     color:#2e7d32;
 }
 
-label{
+label {
     font-weight:bold;
 }
 
-input,
-textarea,
-select{
+input, textarea, select {
     width:100%;
     padding:10px;
     margin-top:5px;
@@ -97,7 +86,7 @@ select{
     border:1px solid #ccc;
 }
 
-button{
+button {
     width:100%;
     background:#2e7d32;
     color:white;
@@ -107,7 +96,7 @@ button{
     margin-top:20px;
 }
 
-.success{
+.success {
     text-align:center;
     color:green;
     font-weight:bold;
@@ -118,13 +107,13 @@ button{
 
 <script>
 
-function calculateTotal(){
+function calculateTotal() {
 
-    var boys=parseInt(document.getElementById('boys').value)||0;
+    var boys = parseInt(document.getElementById('boys').value) || 0;
 
-    var girls=parseInt(document.getElementById('girls').value)||0;
+    var girls = parseInt(document.getElementById('girls').value) || 0;
 
-    document.getElementById('total').value=boys+girls;
+    document.getElementById('total').value = boys + girls;
 }
 
 </script>
@@ -135,19 +124,25 @@ function calculateTotal(){
 
 <div class="header">
 
-<div class="header-left">
+    <div style="display:flex; align-items:center;">
 
-<img src="/static/logo.png" class="header-logo">
+        <img 
+            src="{{ url_for('static', filename='logo.png') }}"
+            class="header-logo"
+            alt="Logo"
+        >
 
-<strong>
-Ummid Foundation (Hope for Human)
-</strong>
+        <strong>
+            Ummid Foundation (Hope for Human)
+        </strong>
 
-</div>
+    </div>
 
-<div>
-<a href="/export">Download Excel</a>
-<a href="/logout">Logout</a>
+    <div>
+        <a href="/export">Download Excel</a>
+        <a href="/logout">Logout</a>
+    </div>
+
 </div>
 
 </div>
@@ -246,22 +241,16 @@ Ummid Foundation (Hope for Human)
 
 </div>
 
-<button type="submit">
-Submit
-</button>
+<button type="submit">Submit</button>
 
 </form>
 
 {% if success %}
-<p class="success">
-Data + Images Saved ✅
-</p>
+<p class="success">Data + Images Saved ✅</p>
 {% endif %}
 
 </div>
-
 </div>
 
 </body>
-
 </html>
