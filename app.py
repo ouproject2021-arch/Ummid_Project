@@ -279,34 +279,70 @@ def dashboard():
             if not school_name:
                 return "School name is required"
 
-            # Create Main School Folder
-            school_folder_id = create_folder(school_name, PARENT_FOLDER_ID)
+           # UDISC Number
+udisc_number = request.form.get('udisc', '').strip()
+
+# Create Main School Folder
+main_folder_name = f"{school_name}_{udisc_number}"
+
+school_folder_id = create_folder(
+    main_folder_name,
+    PARENT_FOLDER_ID
+)
 
             if not school_folder_id:
                 return "❌ Failed to create School folder in Google Drive"
 
             print("School Folder:", school_folder_id)
 
-            # Create Subfolders
-            folders = {
-                "smart_class": create_folder("Smart_Class", school_folder_id),
-                "ro": create_folder("RO", school_folder_id),
-                "sanitary": create_folder("Sanitary", school_folder_id),
-                "toilet": create_folder("Toilet", school_folder_id)
-            }
+                     # Create Subfolders
+folders = {
+    "smart_class": create_folder(
+        "Smart_Class",
+        school_folder_id
+    ),
 
-            # Upload Images
-            for field, folder_id in folders.items():
+    "ro": create_folder(
+        "RO",
+        school_folder_id
+    ),
 
-                if not folder_id:
-                    print(f"⚠ Skipping {field} (folder missing)")
-                    continue
+    "sanitary": create_folder(
+        "Sanitary",
+        school_folder_id
+    ),
 
-                files = request.files.getlist(field)
+    "toilet": create_folder(
+        "Toilet",
+        school_folder_id
+    )
+}
 
-                for file in files:
-                    if file and file.filename and allowed_file(file.filename):
-                        upload_file(file, folder_id)
+print("Created folders:", folders)
+
+           # Upload Images
+for field, folder_id in folders.items():
+
+    if not folder_id:
+        print(f"⚠ Folder not created for: {field}")
+        continue
+
+    files = request.files.getlist(field)
+
+    print(f"Uploading to folder: {field}")
+
+    for file in files:
+
+        if file and file.filename:
+
+            if allowed_file(file.filename):
+
+                print("Uploading:", file.filename)
+
+                upload_file(file, folder_id)
+
+            else:
+                print("Invalid file:", file.filename)
 
             # Save Excel Data
             data = {
