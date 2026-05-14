@@ -3,7 +3,7 @@
 # Tech: Python Flask + Excel + Image Upload
 # ===============================
 
-from flask import Flask, render_template_string, request, redirect, session, send_file, url_for
+from flask import Flask, render_template, request, redirect, session, send_file, url_for
 import pandas as pd
 import os
 from dotenv import load_dotenv
@@ -143,10 +143,7 @@ button {
         <input type="password" name="password" placeholder="Password"><br><br>
 
         <button type="submit">Login</button>
-
-        <h3>TEST IMAGE</h3>
-
-<img src="/static/logo.png" width="200">
+      
     </form>
 
     <p style="color:red;">{{error}}</p>
@@ -174,7 +171,7 @@ def login():
         else:
             error = "Invalid login"
 
-    return render_template_string(login_page, error=error)
+    return render_template("login.html", error=error)
 
 
 # ================= DASHBOARD =================
@@ -669,10 +666,10 @@ def dashboard():
 
             return f"Error occurred: {str(e)}"
 
-    return render_template_string(
-        dashboard_page,
-        success=success
-    )
+    return render_template(
+    "dashboard.html",
+    success=success
+)
 
 
 # ================= EXPORT =================
