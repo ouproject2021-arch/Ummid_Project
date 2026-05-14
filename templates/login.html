@@ -1,1 +1,101 @@
+<!DOCTYPE html>
+<html>
 
+<head>
+
+<meta charset="UTF-8">
+
+<title>Login</title>
+
+<style>
+
+body{
+    font-family:Arial;
+    background:linear-gradient(135deg,#e8f5e9,#ffffff);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+    margin:0;
+}
+
+.login-box{
+    background:white;
+    padding:30px;
+    border-radius:12px;
+    width:320px;
+    text-align:center;
+    box-shadow:0 6px 18px rgba(0,0,0,0.15);
+}
+
+.logo{
+    width:100px;
+    height:100px;
+    object-fit:contain;
+    display:block;
+    margin:auto;
+    margin-bottom:15px;
+}
+
+.brand{
+    font-weight:bold;
+    color:#2e7d32;
+    margin-bottom:15px;
+}
+
+input{
+    width:100%;
+    padding:10px;
+    box-sizing:border-box;
+}
+
+button{
+    width:100%;
+    padding:10px;
+    background:#2e7d32;
+    color:white;
+    border:none;
+    cursor:pointer;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="login-box">
+
+<img src="/static/logo.png" class="logo">
+
+<div class="brand">
+Ummid Foundation (Hope for Human)
+</div>
+
+<h3>Login</h3>
+
+<form method="post">
+
+<input name="username" placeholder="Username">
+
+<br><br>
+
+<input type="password" name="password" placeholder="Password">
+
+<br><br>
+
+<button type="submit">
+Login
+</button>
+
+</form>
+
+<p style="color:red;">
+{{ error }}
+</p>
+
+</div>
+
+</body>
+
+</html>
