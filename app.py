@@ -241,22 +241,21 @@ def upload_file(file, folder_id):
 
     if not drive_service or not folder_id:
         print("❌ Drive service or folder_id missing")
-        return
+        return None
 
     try:
-
         filename = secure_filename(file.filename)
 
         print("📤 Uploading:", filename)
 
-        # ✅ FIX 1: Always reset pointer
-        file.stream.seek(0)
+        file.seek(0)
+        file_bytes = io.BytesIO(file.read())
+        file_bytes.seek(0)
 
-        # ✅ FIX 2: DO NOT wrap in BytesIO (this is the real bug)
         media = MediaIoBaseUpload(
-            file.stream,
+            file_bytes,
             mimetype=file.content_type or "application/octet-stream",
-            resumable=False   # ✅ IMPORTANT FIX for PNG stability
+            resumable=False
         )
 
         file_metadata = {
@@ -264,18 +263,23 @@ def upload_file(file, folder_id):
             'parents': [folder_id]
         }
 
-        drive_service.files().create(
+        uploaded_file = drive_service.files().create(
             body=file_metadata,
             media_body=media,
-            fields='id, parents',
-            supportsAllDrives=True,
-            uploadType='multipart'
+            fields='id,name,parents',
+            supportsAllDrives=True
         ).execute()
 
-        print(f"✅ Uploaded SUCCESS: {filename}")
+        print(
+            f"✅ Uploaded SUCCESS: {uploaded_file.get('name')} "
+            f"ID: {uploaded_file.get('id')}"
+        )
+
+        return uploaded_file.get("id")
+
     except Exception as e:
         print("❌ FILE UPLOAD ERROR:", repr(e))
-
+        raise e
 # ================= DASHBOARD =================
 
 # ================= DASHBOARD =================
