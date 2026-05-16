@@ -18,6 +18,7 @@ from werkzeug.utils import secure_filename
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
+from googleapiclient.errors import HttpError
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
@@ -257,7 +258,8 @@ def upload_file(file, folder_id):
         media = MediaIoBaseUpload(
             file_bytes,
             mimetype=file.content_type or "application/octet-stream",
-            resumable=False
+            chunksize=1024 * 1024,
+            resumable=True
         )
 
         file_metadata = {
@@ -265,15 +267,27 @@ def upload_file(file, folder_id):
             'parents': [folder_id]
         }
 
-        uploaded_file = drive_service.files().create(
+        request_upload = drive_service.files().create(
             body=file_metadata,
             media_body=media,
-            fields='id,name',
+            fields='id,name,parents',
             supportsAllDrives=True
-        ).execute()
+        )
 
-        print(f"✅ Uploaded SUCCESS: {uploaded_file.get('name')}")
+        uploaded_file = None
+
+        while uploaded_file is None:
+            status, uploaded_file = request_upload.next_chunk()
+            if status:
+                print(f"Upload progress: {int(status.progress() * 100)}%")
+
+        print(f"✅ Uploaded SUCCESS: {uploaded_file.get('name')} | ID: {uploaded_file.get('id')}")
         return uploaded_file.get("id")
+
+    except HttpError as e:
+        error_content = e.content.decode("utf-8", errors="ignore") if hasattr(e, "content") else str(e)
+        print("❌ GOOGLE DRIVE HTTP ERROR:", error_content)
+        raise Exception(f"Google Drive upload failed for {file.filename}: {error_content}")
 
     except Exception as e:
         print("❌ FILE UPLOAD ERROR:", repr(e))
