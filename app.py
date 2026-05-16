@@ -391,19 +391,19 @@ def dashboard():
                 "Remarks": request.form['remarks']
             }
 
-            save_to_excel(data)
+                        save_to_excel(data)
 
             success = True
 
         except Exception as e:
 
-    import traceback
-    error_text = traceback.format_exc()
+            import traceback
+            error_text = traceback.format_exc()
 
-    print("DASHBOARD ERROR:")
-    print(error_text)
+            print("DASHBOARD ERROR:")
+            print(error_text)
 
-    return f"<pre>Error occurred:\n{error_text}</pre>"
+            return f"<pre>Error occurred:\n{error_text}</pre>"
 
     return render_template(
         "dashboard.html",
