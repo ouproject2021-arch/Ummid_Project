@@ -280,7 +280,6 @@ def upload_file(file, folder_id):
 # ================= DASHBOARD =================
 
 # ================= DASHBOARD =================
-
 @app.route('/dashboard', methods=['GET', 'POST'])
 def dashboard():
 
@@ -361,6 +360,7 @@ def dashboard():
             return f"<pre>Error occurred:\n{error_text}</pre>"
 
     return render_template("dashboard.html", success=success)
+
 # ================= EXPORT =================
 
 @app.route('/export')
