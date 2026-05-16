@@ -1143,7 +1143,49 @@ def export():
 
         if not df.empty:
             df["drive_folder_link"] = df["drive_folder_link"].fillna("N/A")
-            df.insert(0, "Display ID", range(1, len(df) + 1))
+            df.insert(0, "ID", range(1, len(df) + 1))
+
+            rename_map = {
+                "udisc_number": "UDISC",
+                "school_code": "School Code",
+                "school_name": "School_Name",
+                "location": "Location",
+                "year": "Year",
+                "girls": "Girls",
+                "boys": "Boys",
+                "total_students": "Total",
+                "company_name": "Company",
+                "fy": "FY",
+                "phase": "Phase",
+                "remarks": "Remarks",
+                "created_at": "Created",
+                "drive_folder_link": "Google Drive Folder"
+            }
+
+            if "id" in df.columns:
+                df = df.drop(columns=["id"])
+
+            df = df.rename(columns=rename_map)
+
+            ordered_columns = [
+                "ID",
+                "UDISC",
+                "School Code",
+                "School_Name",
+                "Location",
+                "Year",
+                "Girls",
+                "Boys",
+                "Total",
+                "Company",
+                "FY",
+                "Phase",
+                "Remarks",
+                "Created",
+                "Google Drive Folder"
+            ]
+
+            df = df[[col for col in ordered_columns if col in df.columns]]
 
         export_file = "school_data_export.xlsx"
         df.to_excel(export_file, index=False, engine='openpyxl')
