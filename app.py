@@ -529,7 +529,8 @@ def school_entry():
         try:
             boys = int(request.form.get('boys') or 0)
             girls = int(request.form.get('girls') or 0)
-            school_name = request.form.get('school', '').strip()
+            school_code = request.form.get('school', '').strip()
+            school_name = request.form.get('school_name_display', '').strip()
             udisc_number = request.form.get('udisc', '').strip()
             if not school_name:
                 return "School name is required"
@@ -568,7 +569,8 @@ def image_upload():
     success = False
     if request.method == 'POST':
         try:
-            school_name = request.form.get('school', '').strip()
+            school_code = request.form.get('school', '').strip()
+            school_name = request.form.get('school_name_display', '').strip()
             udisc_number = request.form.get('udisc', '').strip()
             if not school_name:
                 return "School name is required"
