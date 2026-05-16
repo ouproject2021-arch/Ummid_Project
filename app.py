@@ -137,7 +137,8 @@ def authorize():
         flow = Flow.from_client_config(
             client_config,
             scopes=SCOPES,
-            redirect_uri=redirect_uri
+            redirect_uri=redirect_uri,
+            autogenerate_code_verifier=True
         )
 
         authorization_url, state = flow.authorization_url(
@@ -147,6 +148,7 @@ def authorize():
         )
 
         session['state'] = state
+        session['code_verifier'] = flow.code_verifier
 
         return redirect(authorization_url)
 
@@ -172,11 +174,17 @@ def oauth2callback():
             url_for('oauth2callback', _external=True)
         )
 
+        code_verifier = session.get('code_verifier')
+
+        if not code_verifier:
+            return "❌ OAuth Callback Error: Missing code verifier in session. Open /authorize again in the same browser."
+
         flow = Flow.from_client_config(
             client_config,
             scopes=SCOPES,
             state=session.get('state'),
-            redirect_uri=redirect_uri
+            redirect_uri=redirect_uri,
+            code_verifier=code_verifier
         )
 
         flow.fetch_token(authorization_response=request.url)
