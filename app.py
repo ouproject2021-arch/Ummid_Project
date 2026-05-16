@@ -106,7 +106,13 @@ HEADER_HTML = """
 LOGIN_TEMPLATE = """
 <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 """ + BASE_STYLE + """
-</head><body><div class="container"><div class="form-card" style="max-width:420px;"><h2>Login</h2>
+</head><body><div class="container"><div class="form-card" style="max-width:420px;"><div style="text-align:center; margin-bottom:15px;">
+<img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" style="width:100px; height:100px; object-fit:contain;" onerror="this.style.display='none'">
+<div style="margin-top:10px; color:#1b5e20; font-size:18px;">
+<strong>Ummid Foundation (Hope for Human)</strong>
+</div>
+</div>
+<h2>Login</h2>
 <form method="POST"><div class="form-group"><label>Username</label><input name="username" required></div>
 <div class="form-group"><label>Password</label><input type="password" name="password" required></div>
 <button type="submit">Login</button></form>{% if error %}<p class="error">{{ error }}</p>{% endif %}</div></div></body></html>
