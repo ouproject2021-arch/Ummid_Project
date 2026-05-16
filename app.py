@@ -172,8 +172,10 @@ RECORDS_TEMPLATE = """
 </head><body>
 """ + HEADER_HTML + """
 <div class="container"><div class="form-card" style="max-width:1100px;"><h2>Saved School Records</h2><div class="table-wrap"><table>
-<thead><tr><th>ID</th><th>UDISC</th><th>School</th><th>Location</th><th>Year</th><th>Girls</th><th>Boys</th><th>Total</th><th>Company</th><th>FY</th><th>Phase</th><th>Remarks</th><th>Created</th></tr></thead>
-<tbody>{% for row in records %}<tr><td>{{ row.id }}</td><td>{{ row.udisc_number }}</td><td>{{ row.school_name }}</td><td>{{ row.location }}</td><td>{{ row.year }}</td><td>{{ row.girls }}</td><td>{{ row.boys }}</td><td>{{ row.total_students }}</td><td>{{ row.company_name }}</td><td>{{ row.fy }}</td><td>{{ row.phase }}</td><td>{{ row.remarks }}</td><td>{{ row.created_at }}</td></tr>{% endfor %}</tbody>
+<thead><tr><th>ID</th><th>UDISC</th><th>School Code</th>
+<th>School Name</th><th>Location</th><th>Year</th><th>Girls</th><th>Boys</th><th>Total</th><th>Company</th><th>FY</th><th>Phase</th><th>Remarks</th><th>Created</th></tr></thead>
+<tbody>{% for row in records %}<tr><td>{{ row.id }}</td><td>{{ row.udisc_number }}</td><td>{{ row.school_code }}</td>
+<td>{{ row.school_name }}</td><td>{{ row.location }}</td><td>{{ row.year }}</td><td>{{ row.girls }}</td><td>{{ row.boys }}</td><td>{{ row.total_students }}</td><td>{{ row.company_name }}</td><td>{{ row.fy }}</td><td>{{ row.phase }}</td><td>{{ row.remarks }}</td><td>{{ row.created_at }}</td></tr>{% endfor %}</tbody>
 </table></div></div></div></body></html>
 """
 
@@ -199,6 +201,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS school_records (
             id SERIAL PRIMARY KEY,
             udisc_number TEXT NOT NULL,
+            school_code TEXT,
             school_name TEXT NOT NULL,
             location TEXT,
             year TEXT,
@@ -216,6 +219,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS image_uploads (
             id SERIAL PRIMARY KEY,
             udisc_number TEXT NOT NULL,
+            school_code TEXT,
             school_name TEXT NOT NULL,
             category TEXT NOT NULL,
             original_filename TEXT,
@@ -226,6 +230,9 @@ def init_db():
             uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+
+    cur.execute("ALTER TABLE school_records ADD COLUMN IF NOT EXISTS school_code TEXT")
+    cur.execute("ALTER TABLE image_uploads ADD COLUMN IF NOT EXISTS school_code TEXT")
     conn.commit()
     cur.close()
     conn.close()
@@ -535,8 +542,8 @@ def school_entry():
         try:
             boys = int(request.form.get('boys') or 0)
             girls = int(request.form.get('girls') or 0)
-            school_code = request.form.get('school', '').strip()
-            school_name = request.form.get('school_name_display', '').strip()
+            school_code = request.form.get('school_code', '').strip()
+            school_name = request.form.get('school_name', '').strip()
             udisc_number = request.form.get('udisc', '').strip()
             if not school_name:
                 return "School name is required"
@@ -544,7 +551,8 @@ def school_entry():
                 return "UDISC number is required"
             data = {
                 "UDISC Number": udisc_number,
-                "School Name": school_name,
+                "School Code": school_code,
+                "School_Name": school_name,
                 "Location": request.form.get('location', ''),
                 "Year": request.form.get('year', ''),
                 "Girls": girls,
@@ -575,14 +583,14 @@ def image_upload():
     success = False
     if request.method == 'POST':
         try:
-            school_code = request.form.get('school', '').strip()
-            school_name = request.form.get('school_name_display', '').strip()
+            school_code = request.form.get('school_code', '').strip()
+            school_name = request.form.get('school_name', '').strip()
             udisc_number = request.form.get('udisc', '').strip()
             if not school_name:
                 return "School name is required"
             if not udisc_number:
                 return "UDISC number is required"
-            main_folder_name = f"{school_name}_{udisc_number}"
+            main_folder_name = f"{school_code}_{school_name}_{udisc_number}"
             school_folder_id = create_folder(main_folder_name, PARENT_FOLDER_ID)
             if not school_folder_id:
                 return "❌ Failed to create School folder in Google Drive. Open /authorize first."
@@ -604,6 +612,7 @@ def image_upload():
                         upload_count += 1
                         save_image_to_db({
                             "udisc_number": udisc_number,
+                            "school_code": school_code,
                             "school_name": school_name,
                             "category": field,
                             "original_filename": file.filename,
