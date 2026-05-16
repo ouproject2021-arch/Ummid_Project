@@ -258,9 +258,16 @@ RECORDS_TEMPLATE = """
 """ + HEADER_HTML + """
 <div class="container"><div class="form-card" style="max-width:1100px;"><h2>Saved School Records</h2><div class="table-wrap"><table>
 <thead><tr><th>ID</th><th>UDISC</th><th>School Code</th>
-<th>School_Name</th><th>Location</th><th>Year</th><th>Girls</th><th>Boys</th><th>Total</th><th>Company</th><th>FY</th><th>Phase</th><th>Remarks</th><th>Created</th><th>Action</th></tr></thead>
+<th>School_Name</th><th>Location</th><th>Year</th><th>Girls</th><th>Boys</th><th>Total</th><th>Company</th><th>FY</th><th>Phase</th><th>Remarks</th><th>Created</th><th>Google Drive Folder</th><th>Action</th></tr></thead>
 <tbody>{% for row in records %}<tr><td>{{ loop.index }}</td><td>{{ row.udisc_number }}</td><td>{{ row.school_code }}</td>
 <td>{{ row.school_name }}</td><td>{{ row.location }}</td><td>{{ row.year }}</td><td>{{ row.girls }}</td><td>{{ row.boys }}</td><td>{{ row.total_students }}</td><td>{{ row.company_name }}</td><td>{{ row.fy }}</td><td>{{ row.phase }}</td><td>{{ row.remarks }}</td><td>{{ row.created_at }}</td>
+<td>
+{% if row.drive_folder_link %}
+<a href="{{ row.drive_folder_link }}" target="_blank">Open Folder</a>
+{% else %}
+N/A
+{% endif %}
+</td>
 <td>
 <a class="action-link edit-link" href="/edit-record/{{ row.id }}">Edit</a>
 <form class="inline-form" method="POST" action="/delete-record/{{ row.id }}" onsubmit="return confirm('Delete this record?');">
@@ -686,6 +693,67 @@ def upload_file(file, folder_id):
         print("❌ FILE UPLOAD ERROR:", repr(e))
         raise e
 
+
+def get_drive_folder_link_by_name(folder_name, parent_id):
+    global drive_service
+
+    if not drive_service:
+        drive_service = get_drive_service()
+
+    if not drive_service:
+        return None
+
+    try:
+        safe_name = escape_drive_query(folder_name)
+
+        query = (
+            f"name='{safe_name}' and "
+            f"'{parent_id}' in parents and "
+            f"mimeType='application/vnd.google-apps.folder' and "
+            f"trashed=false"
+        )
+
+        response = drive_service.files().list(
+            q=query,
+            fields='files(id, name, webViewLink)',
+            supportsAllDrives=True,
+            includeItemsFromAllDrives=True
+        ).execute()
+
+        files = response.get("files", [])
+
+        if not files:
+            return None
+
+        folder = files[0]
+
+        return folder.get("webViewLink") or f"https://drive.google.com/drive/folders/{folder.get('id')}"
+
+    except Exception as e:
+        print("❌ DRIVE FOLDER LINK LOOKUP ERROR:", repr(e))
+        return None
+
+
+def add_drive_folder_links_to_records(records):
+    updated_records = []
+
+    for record in records:
+        record_dict = dict(record)
+
+        udisc_number = record_dict.get("udisc_number") or ""
+        school_code = record_dict.get("school_code") or ""
+
+        if udisc_number and school_code:
+            folder_name = build_school_drive_folder_name(udisc_number, school_code)
+            record_dict["drive_folder_link"] = get_drive_folder_link_by_name(folder_name, PARENT_FOLDER_ID)
+        else:
+            record_dict["drive_folder_link"] = None
+
+        updated_records.append(record_dict)
+
+    return updated_records
+
+
 # ========================
 # INITIALIZE DRIVE SERVICE
 # ========================
@@ -1055,6 +1123,7 @@ def records():
         return redirect('/')
     try:
         school_records = get_school_records()
+        school_records = add_drive_folder_links_to_records(school_records)
         return render_template_string(RECORDS_TEMPLATE, records=school_records)
     except Exception as e:
         error_text = traceback.format_exc()
@@ -1069,9 +1138,11 @@ def export():
         return redirect('/')
     try:
         records = get_school_records()
+        records = add_drive_folder_links_to_records(records)
         df = pd.DataFrame(records)
 
         if not df.empty:
+            df["drive_folder_link"] = df["drive_folder_link"].fillna("N/A")
             df.insert(0, "Display ID", range(1, len(df) + 1))
 
         export_file = "school_data_export.xlsx"
