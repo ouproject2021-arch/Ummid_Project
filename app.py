@@ -62,34 +62,301 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
 BASE_STYLE = """
 <style>
-* { box-sizing: border-box; }
-body { font-family: 'Segoe UI', Arial; margin:0; background: linear-gradient(120deg, #e3f2fd, #f1f8e9); }
-.header { background:#1b5e20; color:white; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; }
-.header-logo { width:40px; height:40px; object-fit:contain; margin-right:10px; }
-.header a { color:white; text-decoration:none; margin-left:10px; font-size:14px; }
-.container { display:flex; justify-content:center; padding:15px; }
-.form-card, .menu-card { background:white; padding:20px; border-radius:12px; width:100%; max-width:760px; box-shadow:0 6px 18px rgba(0,0,0,0.15); }
-.form-grid { display:grid; grid-template-columns: repeat(2, 1fr); gap:15px; }
-.form-group { display:flex; flex-direction:column; }
-.form-group.full { grid-column: span 2; }
-h2 { text-align:center; color:#2e7d32; }
-label { font-weight:bold; }
-input, textarea, select { width:100%; padding:10px; margin-top:5px; border-radius:6px; border:1px solid #ccc; }
-button, .menu-button { width:100%; background:#2e7d32; color:white; padding:12px; border:none; border-radius:6px; margin-top:20px; display:block; text-align:center; text-decoration:none; font-size:16px; }
-.menu-button.secondary { background:#1565c0; }
-.success { text-align:center; color:green; font-weight:bold; margin-top:10px; }
-.error { text-align:center; color:#b71c1c; font-weight:bold; margin-top:10px; }
-.table-wrap { overflow-x:auto; }
-table { width:100%; border-collapse:collapse; margin-top:16px; }
-th, td { border:1px solid #ddd; padding:8px; font-size:13px; }
-th { background:#e8f5e9; }
-.action-link { display:inline-block; padding:6px 10px; border-radius:5px; color:white; text-decoration:none; margin:2px; font-size:12px; }
+:root {
+    --primary:#1b5e20;
+    --primary-light:#2e7d32;
+    --secondary:#1565c0;
+    --danger:#c62828;
+    --bg1:#e3f2fd;
+    --bg2:#f1f8e9;
+    --card:#ffffff;
+    --text:#1f2937;
+    --muted:#6b7280;
+    --border:#d9e2dd;
+    --shadow:0 10px 30px rgba(15, 23, 42, 0.14);
+}
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body {
+    font-family:'Segoe UI', Arial, sans-serif;
+    margin:0;
+    color:var(--text);
+    background:
+        radial-gradient(circle at top left, rgba(46,125,50,0.12), transparent 28%),
+        radial-gradient(circle at top right, rgba(21,101,192,0.12), transparent 25%),
+        linear-gradient(120deg, var(--bg1), var(--bg2));
+    min-height:100vh;
+}
+.header {
+    background:rgba(27,94,32,0.96);
+    color:white;
+    padding:12px 18px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    position:sticky;
+    top:0;
+    z-index:10;
+    box-shadow:0 6px 20px rgba(0,0,0,0.16);
+    backdrop-filter: blur(8px);
+}
+.header-logo {
+    width:42px;
+    height:42px;
+    object-fit:contain;
+    margin-right:10px;
+    background:white;
+    border-radius:10px;
+    padding:3px;
+}
+.header a {
+    color:white;
+    text-decoration:none;
+    margin-left:8px;
+    font-size:14px;
+    padding:8px 10px;
+    border-radius:8px;
+    transition:all 0.2s ease;
+}
+.header a:hover {
+    background:rgba(255,255,255,0.18);
+    transform:translateY(-1px);
+}
+.container {
+    display:flex;
+    justify-content:center;
+    padding:24px 15px;
+}
+.form-card, .menu-card {
+    background:rgba(255,255,255,0.96);
+    padding:24px;
+    border-radius:18px;
+    width:100%;
+    max-width:780px;
+    box-shadow:var(--shadow);
+    border:1px solid rgba(255,255,255,0.65);
+    animation:fadeIn 0.35s ease;
+}
+.form-card:hover, .menu-card:hover {
+    box-shadow:0 14px 38px rgba(15,23,42,0.18);
+}
+.form-grid {
+    display:grid;
+    grid-template-columns:repeat(2, 1fr);
+    gap:16px;
+}
+.form-group {
+    display:flex;
+    flex-direction:column;
+}
+.form-group.full {
+    grid-column:span 2;
+}
+h2 {
+    text-align:center;
+    color:var(--primary);
+    margin-top:4px;
+    margin-bottom:20px;
+    font-size:28px;
+    letter-spacing:0.2px;
+}
+label {
+    font-weight:700;
+    color:#254235;
+    margin-bottom:3px;
+}
+input, textarea, select {
+    width:100%;
+    padding:11px 12px;
+    margin-top:5px;
+    border-radius:10px;
+    border:1px solid var(--border);
+    background:#fbfdfc;
+    transition:border 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    font-size:15px;
+}
+input:focus, textarea:focus, select:focus {
+    outline:none;
+    border-color:var(--primary-light);
+    background:white;
+    box-shadow:0 0 0 4px rgba(46,125,50,0.12);
+}
+textarea {
+    min-height:90px;
+    resize:vertical;
+}
+button, .menu-button {
+    width:100%;
+    background:linear-gradient(135deg, var(--primary-light), var(--primary));
+    color:white;
+    padding:13px;
+    border:none;
+    border-radius:10px;
+    margin-top:20px;
+    display:block;
+    text-align:center;
+    text-decoration:none;
+    font-size:16px;
+    font-weight:700;
+    cursor:pointer;
+    transition:transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+    box-shadow:0 8px 18px rgba(46,125,50,0.22);
+}
+button:hover, .menu-button:hover {
+    transform:translateY(-2px);
+    box-shadow:0 12px 24px rgba(46,125,50,0.28);
+}
+button:disabled {
+    opacity:0.65;
+    cursor:not-allowed;
+    transform:none;
+}
+.menu-button.secondary {
+    background:linear-gradient(135deg, #1976d2, var(--secondary));
+    box-shadow:0 8px 18px rgba(21,101,192,0.22);
+}
+.success {
+    text-align:center;
+    color:#1b5e20;
+    background:#e8f5e9;
+    border:1px solid #c8e6c9;
+    border-radius:10px;
+    padding:10px;
+    font-weight:bold;
+    margin-top:14px;
+}
+.error {
+    text-align:center;
+    color:#b71c1c;
+    background:#ffebee;
+    border:1px solid #ffcdd2;
+    border-radius:10px;
+    padding:10px;
+    font-weight:bold;
+    margin-top:14px;
+}
+.table-wrap {
+    overflow-x:auto;
+    border-radius:14px;
+    border:1px solid var(--border);
+    background:white;
+}
+table {
+    width:100%;
+    border-collapse:collapse;
+    margin-top:0;
+}
+th, td {
+    border-bottom:1px solid #e5e7eb;
+    border-right:1px solid #edf2ef;
+    padding:10px;
+    font-size:13px;
+    vertical-align:middle;
+}
+th {
+    background:#e8f5e9;
+    color:#0f3d18;
+    position:sticky;
+    top:0;
+    z-index:1;
+}
+tbody tr:nth-child(even) { background:#fbfdfc; }
+tbody tr:hover { background:#f1f8e9; }
+.action-link {
+    display:inline-block;
+    padding:7px 11px;
+    border-radius:8px;
+    color:white;
+    text-decoration:none;
+    margin:2px;
+    font-size:12px;
+    font-weight:700;
+    transition:transform 0.2s ease, opacity 0.2s ease;
+}
+.action-link:hover { transform:translateY(-1px); opacity:0.92; }
 .edit-link { background:#1565c0; }
 .delete-link { background:#c62828; }
 .inline-form { display:inline; }
-.inline-button { width:auto; padding:6px 10px; margin:2px; font-size:12px; background:#c62828; }
-@media(max-width:700px) { .form-grid { grid-template-columns:1fr; } .form-group.full { grid-column:span 1; } }
+.inline-button {
+    width:auto;
+    padding:7px 11px;
+    margin:2px;
+    font-size:12px;
+    background:#c62828;
+    box-shadow:none;
+}
+.badge {
+    display:inline-block;
+    padding:5px 9px;
+    border-radius:999px;
+    background:#e8f5e9;
+    color:#1b5e20;
+    font-size:12px;
+    font-weight:700;
+}
+.page-note {
+    text-align:center;
+    color:#1b5e20;
+    font-weight:bold;
+    background:#f1f8e9;
+    border:1px solid #c8e6c9;
+    padding:10px;
+    border-radius:12px;
+}
+.toolbar {
+    display:flex;
+    gap:10px;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:14px;
+    flex-wrap:wrap;
+}
+.search-box {
+    max-width:340px;
+    margin:0;
+}
+@keyframes fadeIn {
+    from { opacity:0; transform:translateY(8px); }
+    to { opacity:1; transform:translateY(0); }
+}
+@media(max-width:700px) {
+    .header { flex-direction:column; gap:10px; align-items:flex-start; }
+    .header div:last-child { display:flex; flex-wrap:wrap; gap:4px; }
+    .header a { margin-left:0; }
+    .form-grid { grid-template-columns:1fr; }
+    .form-group.full { grid-column:span 1; }
+    .container { padding:16px 10px; }
+    h2 { font-size:24px; }
+}
 </style>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('form').forEach(function(form) {
+        form.addEventListener('submit', function() {
+            var btn = form.querySelector('button[type="submit"]');
+            if (btn && !btn.classList.contains('inline-button')) {
+                btn.dataset.originalText = btn.innerText;
+                btn.innerText = 'Please wait...';
+                setTimeout(function(){ btn.disabled = true; }, 20);
+            }
+        });
+    });
+});
+
+function filterRecordsTable() {
+    var input = document.getElementById('recordSearch');
+    var table = document.getElementById('recordsTable');
+    if (!input || !table) return;
+
+    var filter = input.value.toLowerCase();
+    var rows = table.getElementsByTagName('tr');
+
+    for (var i = 1; i < rows.length; i++) {
+        var txt = rows[i].innerText.toLowerCase();
+        rows[i].style.display = txt.indexOf(filter) > -1 ? '' : 'none';
+    }
+}
+</script>
 """
 
 HEADER_HTML = """
@@ -111,7 +378,7 @@ HEADER_HTML = """
 LOGIN_TEMPLATE = """
 <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 """ + BASE_STYLE + """
-</head><body><div class="container"><div class="form-card" style="max-width:420px;"><div style="text-align:center; margin-bottom:15px;">
+</head><body><div class="container" style="min-height:100vh; align-items:center;"><div class="form-card" style="max-width:420px;"><div style="text-align:center; margin-bottom:15px;">
 <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" style="width:100px; height:100px; object-fit:contain;" onerror="this.style.display='none'">
 <div style="margin-top:10px; color:#1b5e20; font-size:18px;">
 <strong>Ummid Foundation (Hope for Human)</strong>
@@ -129,6 +396,7 @@ MENU_TEMPLATE = """
 </head><body>
 """ + HEADER_HTML + """
 <div class="container"><div class="menu-card"><h2>Dashboard Menu</h2>
+<div class="page-note">Choose an option below to continue.</div>
 <a class="menu-button" href="/school-entry">School Data Entry</a>
 <a class="menu-button secondary" href="/image-upload">Image Upload</a>
 <a class="menu-button" href="/records">View Records</a>
@@ -232,7 +500,7 @@ function fetchSchoolByUdisc() {
 
 </head><body>
 """ + HEADER_HTML + """
-<div class="container"><div class="form-card"><h2>Image Upload</h2><p style="text-align:center; color:#1b5e20; font-weight:bold;">You can upload multiple images for Smart Class, RO, Sanitary, and Toilet. Images will be added to the same Google Drive folder based on UDISC Number + School Code.</p><form method="post" enctype="multipart/form-data"><div class="form-grid">
+<div class="container"><div class="form-card"><h2>Image Upload</h2><p class="page-note">You can upload multiple images for Smart Class, RO, Sanitary, and Toilet. Images will be added to the same Google Drive folder based on UDISC Number + School Code.</p><form method="post" enctype="multipart/form-data"><div class="form-grid">
 <div class="form-group">
 <label>UDISC Number</label>
 <input name="udisc" id="udisc" required onblur="fetchSchoolByUdisc()">
@@ -256,14 +524,14 @@ RECORDS_TEMPLATE = """
 """ + BASE_STYLE + """
 </head><body>
 """ + HEADER_HTML + """
-<div class="container"><div class="form-card" style="max-width:1100px;"><h2>Saved School Records</h2><div class="table-wrap"><table>
+<div class="container"><div class="form-card" style="max-width:1200px;"><h2>Saved School Records</h2><div class="toolbar"><input id="recordSearch" class="search-box" onkeyup="filterRecordsTable()" placeholder="Search by UDISC, School Code, Name, FY..."><span class="badge">Total Records: {{ records|length }}</span></div><div class="table-wrap"><table id="recordsTable">
 <thead><tr><th>ID</th><th>UDISC</th><th>School Code</th>
 <th>School_Name</th><th>Location</th><th>Year</th><th>Girls</th><th>Boys</th><th>Total</th><th>Company</th><th>FY</th><th>Phase</th><th>Remarks</th><th>Created</th><th>Google Drive Folder</th><th>Action</th></tr></thead>
 <tbody>{% for row in records %}<tr><td>{{ loop.index }}</td><td>{{ row.udisc_number }}</td><td>{{ row.school_code }}</td>
 <td>{{ row.school_name }}</td><td>{{ row.location }}</td><td>{{ row.year }}</td><td>{{ row.girls }}</td><td>{{ row.boys }}</td><td>{{ row.total_students }}</td><td>{{ row.company_name }}</td><td>{{ row.fy }}</td><td>{{ row.phase }}</td><td>{{ row.remarks }}</td><td>{{ row.created_at }}</td>
 <td>
 {% if row.drive_folder_link %}
-<a href="{{ row.drive_folder_link }}" target="_blank">Open Folder</a>
+<a class="action-link edit-link" href="{{ row.drive_folder_link }}" target="_blank">Open Folder</a>
 {% else %}
 N/A
 {% endif %}
