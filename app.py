@@ -297,8 +297,6 @@ def dashboard():
             girls = int(request.form.get('girls') or 0)
 
             school_name = request.form.get('school', '').strip()
-
-            # NEW
             udisc_number = request.form.get('udisc', '').strip()
 
             if not school_name:
@@ -307,53 +305,19 @@ def dashboard():
             if not udisc_number:
                 return "UDISC number is required"
 
-            # =========================
-            # CREATE MAIN SCHOOL FOLDER
-            # =========================
-
             main_folder_name = f"{school_name}_{udisc_number}"
 
-            school_folder_id = create_folder(
-                main_folder_name,
-                PARENT_FOLDER_ID
-            )
+            school_folder_id = create_folder(main_folder_name, PARENT_FOLDER_ID)
 
             if not school_folder_id:
                 return "❌ Failed to create School folder in Google Drive"
 
-            print("School Folder:", school_folder_id)
-
-            # =========================
-            # CREATE 4 SUBFOLDERS
-            # =========================
-
             folders = {
-                "smart_class": create_folder(
-                    "Smart_Class",
-                    school_folder_id
-                ),
-
-                "ro": create_folder(
-                    "RO",
-                    school_folder_id
-                ),
-
-                "sanitary": create_folder(
-                    "Sanitary",
-                    school_folder_id
-                ),
-
-                "toilet": create_folder(
-                    "Toilet",
-                    school_folder_id
-                )
+                "smart_class": create_folder("Smart_Class", school_folder_id),
+                "ro": create_folder("RO", school_folder_id),
+                "sanitary": create_folder("Sanitary", school_folder_id),
+                "toilet": create_folder("Toilet", school_folder_id)
             }
-
-            print("Created folders:", folders)
-
-            # =========================
-            # UPLOAD FILES
-            # =========================
 
             for field, folder_id in folders.items():
 
@@ -365,17 +329,8 @@ def dashboard():
 
                 for file in files:
 
-                    if (
-                        file and
-                        file.filename and
-                        allowed_file(file.filename)
-                    ):
-
+                    if file and file.filename and allowed_file(file.filename):
                         upload_file(file, folder_id)
-
-            # =========================
-            # SAVE EXCEL DATA
-            # =========================
 
             data = {
                 "UDISC Number": udisc_number,
@@ -391,7 +346,7 @@ def dashboard():
                 "Remarks": request.form['remarks']
             }
 
-                        save_to_excel(data)
+            save_to_excel(data)
 
             success = True
 
@@ -405,11 +360,7 @@ def dashboard():
 
             return f"<pre>Error occurred:\n{error_text}</pre>"
 
-    return render_template(
-        "dashboard.html",
-        success=success
-    )
-
+    return render_template("dashboard.html", success=success)
 # ================= EXPORT =================
 
 @app.route('/export')
