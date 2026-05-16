@@ -240,42 +240,39 @@ def create_folder(name, parent_id):
 def upload_file(file, folder_id):
 
     if not drive_service or not folder_id:
-        print("❌ Drive service or folder_id missing")
-        return None
+        raise Exception("Drive service or folder_id missing")
 
-    try:
-        filename = secure_filename(file.filename)
+    filename = secure_filename(file.filename)
 
-        print("📤 Uploading:", filename)
+    print("📤 Uploading:", filename)
 
-        file.seek(0)
-        file_bytes = io.BytesIO(file.read())
-        file_bytes.seek(0)
+    file.seek(0)
+    file_bytes = io.BytesIO(file.read())
+    file_bytes.seek(0)
 
-        media = MediaIoBaseUpload(
-            file_bytes,
-            mimetype=file.content_type or "application/octet-stream",
-            resumable=False
-        )
+    if file_bytes.getbuffer().nbytes == 0:
+        raise Exception(f"File is empty: {filename}")
 
-        file_metadata = {
-            'name': filename,
-            'parents': [folder_id]
-        }
+    media = MediaIoBaseUpload(
+        file_bytes,
+        mimetype=file.content_type or "application/octet-stream",
+        resumable=False
+    )
 
-        uploaded_file = drive_service.files().create(
-            body=file_metadata,
-            media_body=media,
-            fields='id,name,parents',
-            supportsAllDrives=True
-        ).execute()
+    file_metadata = {
+        'name': filename,
+        'parents': [folder_id]
+    }
 
-        print(
-            f"✅ Uploaded SUCCESS: {uploaded_file.get('name')} "
-            f"ID: {uploaded_file.get('id')}"
-        )
+    uploaded_file = drive_service.files().create(
+        body=file_metadata,
+        media_body=media,
+        fields='id,name',
+        supportsAllDrives=True
+    ).execute()
 
-        return uploaded_file.get("id")
+    print(f"✅ Uploaded SUCCESS: {uploaded_file.get('name')}")
+    return uploaded_file.get("id")
 
     except Exception as e:
         print("❌ FILE UPLOAD ERROR:", repr(e))
@@ -400,9 +397,13 @@ def dashboard():
 
         except Exception as e:
 
-            print("DASHBOARD ERROR:", str(e))
+    import traceback
+    error_text = traceback.format_exc()
 
-            return f"Error occurred: {str(e)}"
+    print("DASHBOARD ERROR:")
+    print(error_text)
+
+    return f"<pre>Error occurred:\n{error_text}</pre>"
 
     return render_template(
         "dashboard.html",
