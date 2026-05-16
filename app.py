@@ -138,7 +138,8 @@ SCHOOL_ENTRY_TEMPLATE = """
 """ + HEADER_HTML + """
 <div class="container"><div class="form-card"><h2>School Data Entry</h2><form method="post"><div class="form-grid">
 <div class="form-group"><label>UDISC Number</label><input name="udisc" required></div>
-<div class="form-group"><label>School Name</label><input name="school" required></div>
+<div class="form-group"><label>School Code</label><input name="school_code" required></div>
+<div class="form-group"><label>School_Name</label><input name="school_name" required></div>
 <div class="form-group"><label>Location</label><input name="location"></div>
 <div class="form-group"><label>Year of Establishment</label><input name="year"></div>
 <div class="form-group"><label>Girls</label><input id="girls" name="girls" onkeyup="calculateTotal()"></div>
@@ -158,7 +159,8 @@ IMAGE_UPLOAD_TEMPLATE = """
 """ + HEADER_HTML + """
 <div class="container"><div class="form-card"><h2>Image Upload</h2><form method="post" enctype="multipart/form-data"><div class="form-grid">
 <div class="form-group"><label>UDISC Number</label><input name="udisc" required></div>
-<div class="form-group"><label>School Name</label><input name="school" required></div>
+<div class="form-group"><label>School Code</label><input name="school_code" required></div>
+<div class="form-group"><label>School_Name</label><input name="school_name" required></div>
 <div class="form-group full"><label>Smart Class Photos</label><input type="file" name="smart_class" accept="image/png,image/jpeg" multiple></div>
 <div class="form-group full"><label>RO Photos</label><input type="file" name="ro" accept="image/png,image/jpeg" multiple></div>
 <div class="form-group full"><label>Sanitary Photos</label><input type="file" name="sanitary" accept="image/png,image/jpeg" multiple></div>
@@ -173,7 +175,7 @@ RECORDS_TEMPLATE = """
 """ + HEADER_HTML + """
 <div class="container"><div class="form-card" style="max-width:1100px;"><h2>Saved School Records</h2><div class="table-wrap"><table>
 <thead><tr><th>ID</th><th>UDISC</th><th>School Code</th>
-<th>School Name</th><th>Location</th><th>Year</th><th>Girls</th><th>Boys</th><th>Total</th><th>Company</th><th>FY</th><th>Phase</th><th>Remarks</th><th>Created</th></tr></thead>
+<th>School_Name</th><th>Location</th><th>Year</th><th>Girls</th><th>Boys</th><th>Total</th><th>Company</th><th>FY</th><th>Phase</th><th>Remarks</th><th>Created</th></tr></thead>
 <tbody>{% for row in records %}<tr><td>{{ row.id }}</td><td>{{ row.udisc_number }}</td><td>{{ row.school_code }}</td>
 <td>{{ row.school_name }}</td><td>{{ row.location }}</td><td>{{ row.year }}</td><td>{{ row.girls }}</td><td>{{ row.boys }}</td><td>{{ row.total_students }}</td><td>{{ row.company_name }}</td><td>{{ row.fy }}</td><td>{{ row.phase }}</td><td>{{ row.remarks }}</td><td>{{ row.created_at }}</td></tr>{% endfor %}</tbody>
 </table></div></div></div></body></html>
@@ -232,7 +234,9 @@ def init_db():
     """)
 
     cur.execute("ALTER TABLE school_records ADD COLUMN IF NOT EXISTS school_code TEXT")
+    cur.execute("ALTER TABLE school_records ADD COLUMN IF NOT EXISTS school_name TEXT")
     cur.execute("ALTER TABLE image_uploads ADD COLUMN IF NOT EXISTS school_code TEXT")
+    cur.execute("ALTER TABLE image_uploads ADD COLUMN IF NOT EXISTS school_name TEXT")
     conn.commit()
     cur.close()
     conn.close()
@@ -244,11 +248,11 @@ def save_school_to_db(data):
     cur = conn.cursor()
     cur.execute("""
         INSERT INTO school_records (
-            udisc_number, school_name, location, year, girls, boys, total_students,
+            udisc_number, school_code, school_name, location, year, girls, boys, total_students,
             company_name, fy, phase, remarks
-        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
     """, (
-        data["UDISC Number"], data["School Name"], data["Location"], data["Year"],
+        data["UDISC Number"], data["School Code"], data["School_Name"], data["Location"], data["Year"],
         data["Girls"], data["Boys"], data["Total Students"], data["Company Name"],
         data["FY"], data["Phase"], data["Remarks"]
     ))
@@ -263,11 +267,11 @@ def save_image_to_db(data):
     cur = conn.cursor()
     cur.execute("""
         INSERT INTO image_uploads (
-            udisc_number, school_name, category, original_filename,
+            udisc_number, school_code, school_name, category, original_filename,
             drive_file_id, drive_file_name, drive_folder_id, drive_web_link
-        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
     """, (
-        data["udisc_number"], data["school_name"], data["category"],
+        data["udisc_number"], data["school_code"], data["school_name"], data["category"],
         data["original_filename"], data["drive_file_id"], data["drive_file_name"],
         data["drive_folder_id"], data["drive_web_link"]
     ))
@@ -281,7 +285,7 @@ def get_school_records():
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
-        SELECT id, udisc_number, school_name, location, year, girls, boys,
+        SELECT id, udisc_number, school_code, school_name, location, year, girls, boys,
                total_students, company_name, fy, phase, remarks, created_at
         FROM school_records
         ORDER BY id DESC
@@ -545,6 +549,8 @@ def school_entry():
             school_code = request.form.get('school_code', '').strip()
             school_name = request.form.get('school_name', '').strip()
             udisc_number = request.form.get('udisc', '').strip()
+            if not school_code:
+                return "School code is required"
             if not school_name:
                 return "School name is required"
             if not udisc_number:
@@ -586,6 +592,8 @@ def image_upload():
             school_code = request.form.get('school_code', '').strip()
             school_name = request.form.get('school_name', '').strip()
             udisc_number = request.form.get('udisc', '').strip()
+            if not school_code:
+                return "School code is required"
             if not school_name:
                 return "School name is required"
             if not udisc_number:
