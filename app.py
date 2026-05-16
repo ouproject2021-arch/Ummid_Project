@@ -15,7 +15,9 @@ import io
 # Google Drive
 # ========================
 from werkzeug.utils import secure_filename
-from google.oauth2 import service_account
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
+from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 from googleapiclient.errors import HttpError
@@ -23,39 +25,72 @@ from googleapiclient.errors import HttpError
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
 # ========================
-# GOOGLE DRIVE CONNECTION
+# GOOGLE DRIVE OAUTH CONNECTION
 # ========================
 
+TOKEN_FILE = "token.json"
 drive_service = None
 
-try:
-    creds_json = os.environ.get("GOOGLE_CREDENTIALS")
 
-    if not creds_json:
-        raise Exception("GOOGLE_CREDENTIALS not found in environment")
+def save_token(creds):
+    token_data = json.loads(creds.to_json())
 
-    creds_dict = json.loads(creds_json)
+    with open(TOKEN_FILE, "w") as token_file:
+        json.dump(token_data, token_file)
 
-    if "private_key" in creds_dict:
-        creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+    return token_data
 
-    creds = service_account.Credentials.from_service_account_info(
-        creds_dict,
-        scopes=SCOPES
-    )
 
-    drive_service = build(
-        'drive',
-        'v3',
-        credentials=creds,
-        cache_discovery=False
-    )
+def load_token():
+    token_json = os.environ.get("GOOGLE_TOKEN_JSON")
 
-    print("✅ Google Drive Connected Successfully")
+    if token_json:
+        return json.loads(token_json)
 
-except Exception as e:
-    print("❌ GOOGLE DRIVE CONNECTION ERROR:", str(e))
-    drive_service = None
+    if os.path.exists(TOKEN_FILE):
+        with open(TOKEN_FILE, "r") as token_file:
+            return json.load(token_file)
+
+    return None
+
+
+def get_drive_service():
+    try:
+        token_data = load_token()
+
+        if not token_data:
+            print("❌ Google OAuth token not found. Open /authorize first.")
+            return None
+
+        creds = Credentials.from_authorized_user_info(
+            token_data,
+            SCOPES
+        )
+
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+            save_token(creds)
+
+        if not creds or not creds.valid:
+            print("❌ Google OAuth credentials are invalid. Open /authorize again.")
+            return None
+
+        service = build(
+            'drive',
+            'v3',
+            credentials=creds,
+            cache_discovery=False
+        )
+
+        print("✅ Google Drive OAuth Connected Successfully")
+        return service
+
+    except Exception as e:
+        print("❌ GOOGLE DRIVE OAUTH CONNECTION ERROR:", str(e))
+        return None
+
+
+drive_service = get_drive_service()
 
 # ========================
 # GOOGLE DRIVE PARENT FOLDER
@@ -79,6 +114,107 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+# ================= GOOGLE OAUTH ROUTES =================
+
+@app.route('/authorize')
+def authorize():
+
+    try:
+        client_secrets_json = os.environ.get("GOOGLE_CLIENT_SECRETS")
+
+        if not client_secrets_json:
+            return "❌ GOOGLE_CLIENT_SECRETS environment variable not found"
+
+        client_config = json.loads(client_secrets_json)
+
+        redirect_uri = os.environ.get(
+            "GOOGLE_REDIRECT_URI",
+            url_for('oauth2callback', _external=True)
+        )
+
+        flow = Flow.from_client_config(
+            client_config,
+            scopes=SCOPES,
+            redirect_uri=redirect_uri
+        )
+
+        authorization_url, state = flow.authorization_url(
+            access_type='offline',
+            include_granted_scopes='true',
+            prompt='consent'
+        )
+
+        session['state'] = state
+
+        return redirect(authorization_url)
+
+    except Exception as e:
+        return f"❌ OAuth Authorization Error: {str(e)}"
+
+
+@app.route('/oauth2callback')
+def oauth2callback():
+
+    global drive_service
+
+    try:
+        client_secrets_json = os.environ.get("GOOGLE_CLIENT_SECRETS")
+
+        if not client_secrets_json:
+            return "❌ GOOGLE_CLIENT_SECRETS environment variable not found"
+
+        client_config = json.loads(client_secrets_json)
+
+        redirect_uri = os.environ.get(
+            "GOOGLE_REDIRECT_URI",
+            url_for('oauth2callback', _external=True)
+        )
+
+        flow = Flow.from_client_config(
+            client_config,
+            scopes=SCOPES,
+            state=session.get('state'),
+            redirect_uri=redirect_uri
+        )
+
+        flow.fetch_token(authorization_response=request.url)
+
+        creds = flow.credentials
+        token_data = save_token(creds)
+
+        drive_service = get_drive_service()
+
+        return f"""
+        ✅ Google Drive OAuth Connected Successfully <br><br>
+
+        Copy this full token JSON and save it in Render Environment Variable:<br><br>
+
+        Key:<br>
+        <b>GOOGLE_TOKEN_JSON</b><br><br>
+
+        Value:<br>
+        <textarea style='width:100%; height:250px;'>{json.dumps(token_data)}</textarea><br><br>
+
+        After saving GOOGLE_TOKEN_JSON in Render, redeploy the app.
+        """
+
+    except Exception as e:
+        return f"❌ OAuth Callback Error: {str(e)}"
+
+
+@app.route('/oauth-status')
+def oauth_status():
+
+    global drive_service
+
+    drive_service = get_drive_service()
+
+    if drive_service:
+        return "✅ Google Drive OAuth is connected"
+
+    return "❌ Google Drive OAuth is not connected. Open /authorize"
 
 
 # ================= LOGIN =================
@@ -153,10 +289,13 @@ def save_to_excel(data):
 @app.route('/test-drive')
 def test_drive():
 
+    global drive_service
+    drive_service = get_drive_service()
+
     try:
 
         if not drive_service:
-            return "❌ Drive service not initialized"
+            return "❌ Drive service not initialized. Open /authorize first."
 
         parent = drive_service.files().get(
             fileId=PARENT_FOLDER_ID,
@@ -185,7 +324,16 @@ def test_drive():
 
 # ================= GOOGLE DRIVE HELPERS =================
 
+def escape_drive_query(value):
+    return value.replace("\\", "\\\\").replace("'", "\\'")
+
+
 def create_folder(name, parent_id):
+
+    global drive_service
+
+    if not drive_service:
+        drive_service = get_drive_service()
 
     if not drive_service:
         print("❌ Drive service not initialized")
@@ -194,9 +342,11 @@ def create_folder(name, parent_id):
     try:
         print(f"📁 Creating folder: {name}")
 
+        safe_name = escape_drive_query(name)
+
         # Step 1: check if folder exists
         query = (
-            f"name='{name}' and "
+            f"name='{safe_name}' and "
             f"'{parent_id}' in parents and "
             f"mimeType='application/vnd.google-apps.folder' and "
             f"trashed=false"
@@ -240,8 +390,13 @@ def create_folder(name, parent_id):
 ## ======================upload File
 def upload_file(file, folder_id):
 
+    global drive_service
+
+    if not drive_service:
+        drive_service = get_drive_service()
+
     if not drive_service or not folder_id:
-        raise Exception("Drive service or folder_id missing")
+        raise Exception("Drive service or folder_id missing. Open /authorize first.")
 
     try:
         filename = secure_filename(file.filename)
@@ -258,7 +413,6 @@ def upload_file(file, folder_id):
         media = MediaIoBaseUpload(
             file_bytes,
             mimetype=file.content_type or "application/octet-stream",
-            chunksize=1024 * 1024,
             resumable=True
         )
 
@@ -278,21 +432,18 @@ def upload_file(file, folder_id):
 
         while uploaded_file is None:
             status, uploaded_file = request_upload.next_chunk()
-            if status:
-                print(f"Upload progress: {int(status.progress() * 100)}%")
 
-        print(f"✅ Uploaded SUCCESS: {uploaded_file.get('name')} | ID: {uploaded_file.get('id')}")
+        print(f"✅ Uploaded SUCCESS: {uploaded_file.get('name')} ID: {uploaded_file.get('id')}")
         return uploaded_file.get("id")
 
     except HttpError as e:
-        error_content = e.content.decode("utf-8", errors="ignore") if hasattr(e, "content") else str(e)
-        print("❌ GOOGLE DRIVE HTTP ERROR:", error_content)
+        error_content = e.content.decode("utf-8") if hasattr(e, "content") else str(e)
+        print("❌ FILE UPLOAD HTTP ERROR:", error_content)
         raise Exception(f"Google Drive upload failed for {file.filename}: {error_content}")
 
     except Exception as e:
         print("❌ FILE UPLOAD ERROR:", repr(e))
         raise e
-
 # ================= DASHBOARD =================
 
 # ================= DASHBOARD =================
@@ -325,7 +476,7 @@ def dashboard():
             school_folder_id = create_folder(main_folder_name, PARENT_FOLDER_ID)
 
             if not school_folder_id:
-                return "❌ Failed to create School folder in Google Drive"
+                return "❌ Failed to create School folder in Google Drive. Open /authorize first."
 
             folders = {
                 "smart_class": create_folder("Smart_Class", school_folder_id),
