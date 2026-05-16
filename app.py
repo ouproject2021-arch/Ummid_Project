@@ -143,7 +143,7 @@ SCHOOL_ENTRY_TEMPLATE = """
 """ + HEADER_HTML + """
 <div class="container"><div class="form-card"><h2>School Data Entry</h2><form method="post"><div class="form-grid">
 <div class="form-group"><label>UDISC Number</label><input name="udisc" required></div>
-<div class="form-group"><label>School Code</label><input name="school_code" required></div>
+<div class="form-group"><label>School Code</label><input id="school_code" name="school_code" required onblur="validateSchoolCode()"></div>
 <div class="form-group"><label>School_Name</label><input name="school_name" required></div>
 <div class="form-group"><label>Location</label><input name="location"></div>
 <div class="form-group"><label>Year of Establishment</label><input name="year"></div>
@@ -160,12 +160,52 @@ SCHOOL_ENTRY_TEMPLATE = """
 IMAGE_UPLOAD_TEMPLATE = """
 <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 """ + BASE_STYLE + """
+<script>
+function fetchSchoolByUdisc() {
+    var udisc = document.getElementById('udisc').value.trim();
+    var schoolCodeInput = document.getElementById('school_code');
+    var msg = document.getElementById('school_lookup_message');
+
+    schoolCodeInput.value = "";
+    msg.innerText = "";
+
+    if (!udisc) {
+        return;
+    }
+
+    fetch('/get-school-by-udisc/' + encodeURIComponent(udisc))
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.found) {
+                schoolCodeInput.value = data.school_code || "";
+                msg.innerText = "School_Name: " + (data.school_name || "");
+                msg.style.color = "#1b5e20";
+            } else {
+                msg.innerText = "No school record found for this UDISC Number. Please enter school data first.";
+                msg.style.color = "#b71c1c";
+            }
+        })
+        .catch(function(error) {
+            msg.innerText = "Unable to fetch school details.";
+            msg.style.color = "#b71c1c";
+        });
+}
+</script>
+
 </head><body>
 """ + HEADER_HTML + """
 <div class="container"><div class="form-card"><h2>Image Upload</h2><form method="post" enctype="multipart/form-data"><div class="form-grid">
-<div class="form-group"><label>UDISC Number</label><input name="udisc" required></div>
-<div class="form-group"><label>School Code</label><input name="school_code" required></div>
-<div class="form-group"><label>School_Name</label><input name="school_name" required></div>
+<div class="form-group">
+<label>UDISC Number</label>
+<input name="udisc" id="udisc" required onblur="fetchSchoolByUdisc()">
+</div>
+<div class="form-group">
+<label>School Code</label>
+<input name="school_code" id="school_code" readonly>
+</div>
+<div class="form-group full">
+<p id="school_lookup_message" style="margin:0; color:#1b5e20; font-weight:bold;"></p>
+</div>
 <div class="form-group full"><label>Smart Class Photos</label><input type="file" name="smart_class" accept="image/png,image/jpeg" multiple></div>
 <div class="form-group full"><label>RO Photos</label><input type="file" name="ro" accept="image/png,image/jpeg" multiple></div>
 <div class="form-group full"><label>Sanitary Photos</label><input type="file" name="sanitary" accept="image/png,image/jpeg" multiple></div>
@@ -318,6 +358,47 @@ def save_image_to_db(data):
     cur.close()
     conn.close()
 
+
+
+
+
+def school_code_exists(school_code, exclude_id=None):
+    init_db()
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    if exclude_id:
+        cur.execute(
+            "SELECT 1 FROM school_records WHERE school_code = %s AND id != %s LIMIT 1",
+            (school_code, exclude_id)
+        )
+    else:
+        cur.execute(
+            "SELECT 1 FROM school_records WHERE school_code = %s LIMIT 1",
+            (school_code,)
+        )
+
+    exists = cur.fetchone() is not None
+    cur.close()
+    conn.close()
+    return exists
+
+
+def get_school_by_udisc(udisc_number):
+    init_db()
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT id, udisc_number, school_code, school_name
+        FROM school_records
+        WHERE udisc_number = %s
+        ORDER BY id DESC
+        LIMIT 1
+    """, (udisc_number,))
+    record = cur.fetchone()
+    cur.close()
+    conn.close()
+    return record
 
 
 def get_school_record_by_id(record_id):
@@ -684,6 +765,43 @@ def school_entry():
             return f"<pre>Error occurred:\n{error_text}</pre>"
     return render_template_string(SCHOOL_ENTRY_TEMPLATE, success=success)
 
+
+
+@app.route('/check-school-code/<school_code>')
+def check_school_code(school_code):
+    if 'user' not in session:
+        return {"exists": False}
+
+    try:
+        exists = school_code_exists(school_code.strip())
+        return {"exists": exists}
+    except Exception:
+        return {"exists": False}
+
+
+@app.route('/get-school-by-udisc/<udisc_number>')
+def get_school_by_udisc_route(udisc_number):
+    if 'user' not in session:
+        return {"found": False, "error": "Not logged in"}
+
+    try:
+        record = get_school_by_udisc(udisc_number)
+
+        if not record:
+            return {"found": False}
+
+        return {
+            "found": True,
+            "school_code": record.get("school_code") or "",
+            "school_name": record.get("school_name") or ""
+        }
+
+    except Exception as e:
+        print("UDISC LOOKUP ERROR:")
+        print(traceback.format_exc())
+        return {"found": False, "error": str(e)}
+
+
 # ========================
 # IMAGE UPLOAD
 # ========================
@@ -695,16 +813,26 @@ def image_upload():
     success = False
     if request.method == 'POST':
         try:
-            school_code = request.form.get('school_code', '').strip()
-            school_name = request.form.get('school_name', '').strip()
             udisc_number = request.form.get('udisc', '').strip()
-            if not school_code:
-                return "School code is required"
-            if not school_name:
-                return "School name is required"
+
             if not udisc_number:
                 return "UDISC number is required"
-            main_folder_name = f"{school_code}_{school_name}_{udisc_number}"
+
+            school_record = get_school_by_udisc(udisc_number)
+
+            if not school_record:
+                return "No school record found for this UDISC Number. Please enter school data first."
+
+            school_code = (school_record.get("school_code") or "").strip()
+            school_name = (school_record.get("school_name") or "").strip()
+
+            if not school_code:
+                return "School code not found in database for this UDISC Number"
+
+            if not school_name:
+                return "School name not found in database for this UDISC Number"
+
+            main_folder_name = f"{udisc_number}_{school_code}"
             school_folder_id = create_folder(main_folder_name, PARENT_FOLDER_ID)
             if not school_folder_id:
                 return "❌ Failed to create School folder in Google Drive. Open /authorize first."
@@ -771,6 +899,9 @@ def edit_record(record_id):
 
             if not school_code:
                 return "School code is required"
+
+            if school_code_exists(school_code):
+                return "<script>alert('Duplicate School Code detected. Please enter a unique School Code.');window.history.back();</script>"
 
             if not school_name:
                 return "School name is required"
