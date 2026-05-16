@@ -1,6 +1,6 @@
 # ===============================
 # School Data Entry Web App
-# Tech: Python Flask + PostgreSQL + Google Drive OAuth Image Upload
+# Tech: Python Flask + Supabase PostgreSQL + Google Drive OAuth Image Upload
 # ===============================
 
 from flask import Flask, render_template_string, request, redirect, session, send_file, url_for
@@ -13,7 +13,7 @@ import io
 from datetime import datetime
 
 # ========================
-# PostgreSQL
+# Supabase PostgreSQL
 # ========================
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -125,16 +125,24 @@ def allowed_file(filename):
 
 
 # ========================
-# POSTGRESQL CONNECTION
+# SUPABASE POSTGRESQL CONNECTION
 # ========================
 
 def get_db_connection():
-    database_url = os.environ.get("DATABASE_URL")
+    database_url = (
+        os.environ.get("SUPABASE_DATABASE_URL") or
+        os.environ.get("DATABASE_URL")
+    )
 
     if not database_url:
-        raise Exception("DATABASE_URL environment variable not found")
+        raise Exception("SUPABASE_DATABASE_URL or DATABASE_URL environment variable not found")
 
-    return psycopg2.connect(database_url)
+    # Supabase PostgreSQL requires SSL. If sslmode is not already in the URL,
+    # add it through psycopg2 connection options.
+    if "sslmode=" in database_url:
+        return psycopg2.connect(database_url)
+
+    return psycopg2.connect(database_url, sslmode="require")
 
 
 def init_db():
@@ -178,10 +186,10 @@ def init_db():
         cur.close()
         conn.close()
 
-        print("✅ PostgreSQL tables ready")
+        print("✅ Supabase PostgreSQL tables ready")
 
     except Exception as e:
-        print("❌ POSTGRESQL INIT ERROR:", str(e))
+        print("❌ SUPABASE POSTGRESQL INIT ERROR:", str(e))
 
 
 init_db()
@@ -224,7 +232,7 @@ def save_school_to_db(data):
     cur.close()
     conn.close()
 
-    print("✅ School data saved to PostgreSQL")
+    print("✅ School data saved to Supabase PostgreSQL")
 
 
 def save_image_to_db(data):
@@ -279,6 +287,31 @@ def get_school_records():
             created_at AS "Created At"
         FROM schools
         ORDER BY created_at DESC
+    """)
+
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    return rows
+
+
+def get_image_records():
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    cur.execute("""
+        SELECT
+            udisc_number AS "UDISC Number",
+            school_name AS "School Name",
+            category AS "Category",
+            file_name AS "File Name",
+            drive_file_id AS "Drive File ID",
+            drive_folder_id AS "Drive Folder ID",
+            drive_link AS "Drive Link",
+            uploaded_at AS "Uploaded At"
+        FROM school_images
+        ORDER BY uploaded_at DESC
     """)
 
     rows = cur.fetchall()
@@ -548,6 +581,7 @@ HEADER_HTML = """
     <div>
         <a href="/menu">Menu</a>
         <a href="/records">View Records</a>
+        <a href="/image-records">Image Records</a>
         <a href="/export">Download Excel</a>
         <a href="/logout">Logout</a>
     </div>
@@ -784,7 +818,7 @@ def school_entry():
 </form>
 
 {% if success %}
-<p class="success">School Data Saved to PostgreSQL ✅</p>
+<p class="success">School Data Saved to Supabase PostgreSQL ✅</p>
 {% endif %}
 
 </div>
@@ -908,7 +942,7 @@ def image_upload():
 </form>
 
 {% if success %}
-<p class="success">Images Uploaded to Google Drive + Saved in PostgreSQL ✅</p>
+<p class="success">Images Uploaded to Google Drive + Saved in Supabase PostgreSQL ✅</p>
 {% endif %}
 
 </div>
@@ -1149,6 +1183,62 @@ def records():
         import traceback
         error_text = traceback.format_exc()
         print("RECORDS ERROR:")
+        print(error_text)
+        return f"<pre>Error occurred:\n{error_text}</pre>"
+
+
+
+# ================= VIEW IMAGE RECORDS =================
+
+@app.route('/image-records')
+def image_records():
+
+    if 'user' not in session:
+        return redirect('/')
+
+    try:
+        rows = get_image_records()
+
+        body = """
+<div class="container">
+<div class="form-card" style="max-width:1100px;">
+<h2>Image Records</h2>
+<div class="table-wrap">
+<table>
+<thead>
+<tr>
+<th>UDISC Number</th>
+<th>School Name</th>
+<th>Category</th>
+<th>File Name</th>
+<th>Drive Link</th>
+<th>Uploaded At</th>
+</tr>
+</thead>
+<tbody>
+{% for row in rows %}
+<tr>
+<td>{{ row["UDISC Number"] }}</td>
+<td>{{ row["School Name"] }}</td>
+<td>{{ row["Category"] }}</td>
+<td>{{ row["File Name"] }}</td>
+<td>{% if row["Drive Link"] %}<a href="{{ row["Drive Link"] }}" target="_blank">Open</a>{% endif %}</td>
+<td>{{ row["Uploaded At"] }}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+</div>
+</div>
+"""
+
+        return render_template_string(page_template("Image Records", body), rows=rows)
+
+    except Exception as e:
+        import traceback
+        error_text = traceback.format_exc()
+        print("IMAGE RECORDS ERROR:")
         print(error_text)
         return f"<pre>Error occurred:\n{error_text}</pre>"
 
