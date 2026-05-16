@@ -83,6 +83,11 @@ button, .menu-button { width:100%; background:#2e7d32; color:white; padding:12px
 table { width:100%; border-collapse:collapse; margin-top:16px; }
 th, td { border:1px solid #ddd; padding:8px; font-size:13px; }
 th { background:#e8f5e9; }
+.action-link { display:inline-block; padding:6px 10px; border-radius:5px; color:white; text-decoration:none; margin:2px; font-size:12px; }
+.edit-link { background:#1565c0; }
+.delete-link { background:#c62828; }
+.inline-form { display:inline; }
+.inline-button { width:auto; padding:6px 10px; margin:2px; font-size:12px; background:#c62828; }
 @media(max-width:700px) { .form-grid { grid-template-columns:1fr; } .form-group.full { grid-column:span 1; } }
 </style>
 """
@@ -175,10 +180,44 @@ RECORDS_TEMPLATE = """
 """ + HEADER_HTML + """
 <div class="container"><div class="form-card" style="max-width:1100px;"><h2>Saved School Records</h2><div class="table-wrap"><table>
 <thead><tr><th>ID</th><th>UDISC</th><th>School Code</th>
-<th>School_Name</th><th>Location</th><th>Year</th><th>Girls</th><th>Boys</th><th>Total</th><th>Company</th><th>FY</th><th>Phase</th><th>Remarks</th><th>Created</th></tr></thead>
+<th>School_Name</th><th>Location</th><th>Year</th><th>Girls</th><th>Boys</th><th>Total</th><th>Company</th><th>FY</th><th>Phase</th><th>Remarks</th><th>Created</th><th>Action</th></tr></thead>
 <tbody>{% for row in records %}<tr><td>{{ row.id }}</td><td>{{ row.udisc_number }}</td><td>{{ row.school_code }}</td>
-<td>{{ row.school_name }}</td><td>{{ row.location }}</td><td>{{ row.year }}</td><td>{{ row.girls }}</td><td>{{ row.boys }}</td><td>{{ row.total_students }}</td><td>{{ row.company_name }}</td><td>{{ row.fy }}</td><td>{{ row.phase }}</td><td>{{ row.remarks }}</td><td>{{ row.created_at }}</td></tr>{% endfor %}</tbody>
+<td>{{ row.school_name }}</td><td>{{ row.location }}</td><td>{{ row.year }}</td><td>{{ row.girls }}</td><td>{{ row.boys }}</td><td>{{ row.total_students }}</td><td>{{ row.company_name }}</td><td>{{ row.fy }}</td><td>{{ row.phase }}</td><td>{{ row.remarks }}</td><td>{{ row.created_at }}</td>
+<td>
+<a class="action-link edit-link" href="/edit-record/{{ row.id }}">Edit</a>
+<form class="inline-form" method="POST" action="/delete-record/{{ row.id }}" onsubmit="return confirm('Delete this record?');">
+<button class="inline-button" type="submit">Delete</button>
+</form>
+</td></tr>{% endfor %}</tbody>
 </table></div></div></div></body></html>
+"""
+
+
+EDIT_RECORD_TEMPLATE = """
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+""" + BASE_STYLE + """
+<script>function calculateTotal(){var boys=parseInt(document.getElementById('boys').value)||0;var girls=parseInt(document.getElementById('girls').value)||0;document.getElementById('total').value=boys+girls;}</script>
+</head><body>
+""" + HEADER_HTML + """
+<div class="container"><div class="form-card"><h2>Edit School Record</h2><form method="post"><div class="form-grid">
+<div class="form-group"><label>UDISC Number</label><input name="udisc" value="{{ record.udisc_number }}" required></div>
+<div class="form-group"><label>School Code</label><input name="school_code" value="{{ record.school_code }}" required></div>
+<div class="form-group"><label>School_Name</label><input name="school_name" value="{{ record.school_name }}" required></div>
+<div class="form-group"><label>Location</label><input name="location" value="{{ record.location }}"></div>
+<div class="form-group"><label>Year of Establishment</label><input name="year" value="{{ record.year }}"></div>
+<div class="form-group"><label>Girls</label><input id="girls" name="girls" value="{{ record.girls }}" onkeyup="calculateTotal()"></div>
+<div class="form-group"><label>Boys</label><input id="boys" name="boys" value="{{ record.boys }}" onkeyup="calculateTotal()"></div>
+<div class="form-group"><label>Total Students</label><input id="total" name="total" value="{{ record.total_students }}" readonly></div>
+<div class="form-group"><label>Company Name</label><input name="company" value="{{ record.company_name }}"></div>
+<div class="form-group"><label>FY</label><input name="fy" value="{{ record.fy }}"></div>
+<div class="form-group"><label>Phase</label><select name="phase">
+<option {% if record.phase == '1st Phase' %}selected{% endif %}>1st Phase</option>
+<option {% if record.phase == '2nd Phase' %}selected{% endif %}>2nd Phase</option>
+<option {% if record.phase == '3rd Phase' %}selected{% endif %}>3rd Phase</option>
+<option {% if record.phase == '4th Phase' %}selected{% endif %}>4th Phase</option>
+</select></div>
+<div class="form-group full"><label>Remarks</label><textarea name="remarks">{{ record.remarks }}</textarea></div>
+</div><button type="submit">Update Record</button></form></div></div></body></html>
 """
 
 # ========================
@@ -275,6 +314,73 @@ def save_image_to_db(data):
         data["original_filename"], data["drive_file_id"], data["drive_file_name"],
         data["drive_folder_id"], data["drive_web_link"]
     ))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+
+def get_school_record_by_id(record_id):
+    init_db()
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT id, udisc_number, school_code, school_name, location, year, girls, boys,
+               total_students, company_name, fy, phase, remarks, created_at
+        FROM school_records
+        WHERE id = %s
+    """, (record_id,))
+    record = cur.fetchone()
+    cur.close()
+    conn.close()
+    return record
+
+
+def update_school_record(record_id, data):
+    init_db()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE school_records
+        SET
+            udisc_number = %s,
+            school_code = %s,
+            school_name = %s,
+            location = %s,
+            year = %s,
+            girls = %s,
+            boys = %s,
+            total_students = %s,
+            company_name = %s,
+            fy = %s,
+            phase = %s,
+            remarks = %s
+        WHERE id = %s
+    """, (
+        data["UDISC Number"],
+        data["School Code"],
+        data["School_Name"],
+        data["Location"],
+        data["Year"],
+        data["Girls"],
+        data["Boys"],
+        data["Total Students"],
+        data["Company Name"],
+        data["FY"],
+        data["Phase"],
+        data["Remarks"],
+        record_id
+    ))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def delete_school_record(record_id):
+    init_db()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM school_records WHERE id = %s", (record_id,))
     conn.commit()
     cur.close()
     conn.close()
@@ -638,6 +744,83 @@ def image_upload():
             print(error_text)
             return f"<pre>Error occurred:\n{error_text}</pre>"
     return render_template_string(IMAGE_UPLOAD_TEMPLATE, success=success)
+
+
+# ========================
+# EDIT / DELETE RECORD
+# ========================
+
+@app.route('/edit-record/<int:record_id>', methods=['GET', 'POST'])
+def edit_record(record_id):
+    if 'user' not in session:
+        return redirect('/')
+
+    try:
+        record = get_school_record_by_id(record_id)
+
+        if not record:
+            return "Record not found"
+
+        if request.method == 'POST':
+            boys = int(request.form.get('boys') or 0)
+            girls = int(request.form.get('girls') or 0)
+
+            school_code = request.form.get('school_code', '').strip()
+            school_name = request.form.get('school_name', '').strip()
+            udisc_number = request.form.get('udisc', '').strip()
+
+            if not school_code:
+                return "School code is required"
+
+            if not school_name:
+                return "School name is required"
+
+            if not udisc_number:
+                return "UDISC number is required"
+
+            data = {
+                "UDISC Number": udisc_number,
+                "School Code": school_code,
+                "School_Name": school_name,
+                "Location": request.form.get('location', ''),
+                "Year": request.form.get('year', ''),
+                "Girls": girls,
+                "Boys": boys,
+                "Total Students": boys + girls,
+                "Company Name": request.form.get('company', ''),
+                "FY": request.form.get('fy', ''),
+                "Phase": request.form.get('phase', ''),
+                "Remarks": request.form.get('remarks', '')
+            }
+
+            update_school_record(record_id, data)
+
+            return redirect('/records')
+
+        return render_template_string(EDIT_RECORD_TEMPLATE, record=record)
+
+    except Exception as e:
+        error_text = traceback.format_exc()
+        print("EDIT RECORD ERROR:")
+        print(error_text)
+        return f"<pre>Error occurred:\n{error_text}</pre>"
+
+
+@app.route('/delete-record/<int:record_id>', methods=['POST'])
+def delete_record(record_id):
+    if 'user' not in session:
+        return redirect('/')
+
+    try:
+        delete_school_record(record_id)
+        return redirect('/records')
+
+    except Exception as e:
+        error_text = traceback.format_exc()
+        print("DELETE RECORD ERROR:")
+        print(error_text)
+        return f"<pre>Error occurred:\n{error_text}</pre>"
+
 
 # ========================
 # RECORDS / EXPORT
