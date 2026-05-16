@@ -242,41 +242,43 @@ def upload_file(file, folder_id):
     if not drive_service or not folder_id:
         raise Exception("Drive service or folder_id missing")
 
-    filename = secure_filename(file.filename)
+    try:
+        filename = secure_filename(file.filename)
 
-    print("📤 Uploading:", filename)
+        print("📤 Uploading:", filename)
 
-    file.seek(0)
-    file_bytes = io.BytesIO(file.read())
-    file_bytes.seek(0)
+        file.seek(0)
+        file_bytes = io.BytesIO(file.read())
+        file_bytes.seek(0)
 
-    if file_bytes.getbuffer().nbytes == 0:
-        raise Exception(f"File is empty: {filename}")
+        if file_bytes.getbuffer().nbytes == 0:
+            raise Exception(f"File is empty: {filename}")
 
-    media = MediaIoBaseUpload(
-        file_bytes,
-        mimetype=file.content_type or "application/octet-stream",
-        resumable=False
-    )
+        media = MediaIoBaseUpload(
+            file_bytes,
+            mimetype=file.content_type or "application/octet-stream",
+            resumable=False
+        )
 
-    file_metadata = {
-        'name': filename,
-        'parents': [folder_id]
-    }
+        file_metadata = {
+            'name': filename,
+            'parents': [folder_id]
+        }
 
-    uploaded_file = drive_service.files().create(
-        body=file_metadata,
-        media_body=media,
-        fields='id,name',
-        supportsAllDrives=True
-    ).execute()
+        uploaded_file = drive_service.files().create(
+            body=file_metadata,
+            media_body=media,
+            fields='id,name',
+            supportsAllDrives=True
+        ).execute()
 
-    print(f"✅ Uploaded SUCCESS: {uploaded_file.get('name')}")
-    return uploaded_file.get("id")
+        print(f"✅ Uploaded SUCCESS: {uploaded_file.get('name')}")
+        return uploaded_file.get("id")
 
     except Exception as e:
         print("❌ FILE UPLOAD ERROR:", repr(e))
         raise e
+
 # ================= DASHBOARD =================
 
 # ================= DASHBOARD =================
