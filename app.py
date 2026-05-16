@@ -259,7 +259,7 @@ RECORDS_TEMPLATE = """
 <div class="container"><div class="form-card" style="max-width:1100px;"><h2>Saved School Records</h2><div class="table-wrap"><table>
 <thead><tr><th>ID</th><th>UDISC</th><th>School Code</th>
 <th>School_Name</th><th>Location</th><th>Year</th><th>Girls</th><th>Boys</th><th>Total</th><th>Company</th><th>FY</th><th>Phase</th><th>Remarks</th><th>Created</th><th>Action</th></tr></thead>
-<tbody>{% for row in records %}<tr><td>{{ row.id }}</td><td>{{ row.udisc_number }}</td><td>{{ row.school_code }}</td>
+<tbody>{% for row in records %}<tr><td>{{ loop.index }}</td><td>{{ row.udisc_number }}</td><td>{{ row.school_code }}</td>
 <td>{{ row.school_name }}</td><td>{{ row.location }}</td><td>{{ row.year }}</td><td>{{ row.girls }}</td><td>{{ row.boys }}</td><td>{{ row.total_students }}</td><td>{{ row.company_name }}</td><td>{{ row.fy }}</td><td>{{ row.phase }}</td><td>{{ row.remarks }}</td><td>{{ row.created_at }}</td>
 <td>
 <a class="action-link edit-link" href="/edit-record/{{ row.id }}">Edit</a>
@@ -1070,6 +1070,10 @@ def export():
     try:
         records = get_school_records()
         df = pd.DataFrame(records)
+
+        if not df.empty:
+            df.insert(0, "Display ID", range(1, len(df) + 1))
+
         export_file = "school_data_export.xlsx"
         df.to_excel(export_file, index=False, engine='openpyxl')
         return send_file(export_file, as_attachment=True)
