@@ -232,7 +232,7 @@ function fetchSchoolByUdisc() {
 
 </head><body>
 """ + HEADER_HTML + """
-<div class="container"><div class="form-card"><h2>Image Upload</h2><form method="post" enctype="multipart/form-data"><div class="form-grid">
+<div class="container"><div class="form-card"><h2>Image Upload</h2><p style="text-align:center; color:#1b5e20; font-weight:bold;">You can upload multiple images for Smart Class, RO, Sanitary, and Toilet. Images will be added to the same Google Drive folder based on UDISC Number + School Code.</p><form method="post" enctype="multipart/form-data"><div class="form-grid">
 <div class="form-group">
 <label>UDISC Number</label>
 <input name="udisc" id="udisc" required onblur="fetchSchoolByUdisc()">
@@ -248,7 +248,7 @@ function fetchSchoolByUdisc() {
 <div class="form-group full"><label>RO Photos</label><input type="file" name="ro" accept="image/png,image/jpeg" multiple></div>
 <div class="form-group full"><label>Sanitary Photos</label><input type="file" name="sanitary" accept="image/png,image/jpeg" multiple></div>
 <div class="form-group full"><label>Toilet Photos</label><input type="file" name="toilet" accept="image/png,image/jpeg" multiple></div>
-</div><button type="submit">Upload Images</button></form>{% if success %}<p class="success">Images uploaded to Google Drive ✅</p>{% endif %}</div></div></body></html>
+</div><button type="submit">Upload Images</button></form>{% if success %}<p class="success">{{ upload_count }} image(s) uploaded to Google Drive ✅</p>{% endif %}</div></div></body></html>
 """
 
 RECORDS_TEMPLATE = """
@@ -596,6 +596,13 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+
+def build_school_drive_folder_name(udisc_number, school_code):
+    safe_udisc = secure_filename(str(udisc_number).strip())
+    safe_school_code = secure_filename(str(school_code).strip())
+    return f"{safe_udisc}_{safe_school_code}"
+
+
 def create_folder(name, parent_id):
     global drive_service
     if not drive_service:
@@ -908,7 +915,7 @@ def image_upload():
             if not school_name:
                 return "School name not found in database for this UDISC Number"
 
-            main_folder_name = f"{udisc_number}_{school_code}"
+            main_folder_name = build_school_drive_folder_name(udisc_number, school_code)
             school_folder_id = create_folder(main_folder_name, PARENT_FOLDER_ID)
             if not school_folder_id:
                 return "❌ Failed to create School folder in Google Drive. Open /authorize first."
@@ -919,15 +926,23 @@ def image_upload():
                 "toilet": create_folder("Toilet", school_folder_id)
             }
             upload_count = 0
+
             for field, folder_id in folders.items():
+
                 if not folder_id:
                     print(f"⚠ Skipping {field} folder")
                     continue
-                files = request.files.getlist(field)
-                for file in files:
+
+                selected_files = request.files.getlist(field)
+
+                for file in selected_files:
+
                     if file and file.filename and allowed_file(file.filename):
+
                         uploaded_file = upload_file(file, folder_id)
+
                         upload_count += 1
+
                         save_image_to_db({
                             "udisc_number": udisc_number,
                             "school_code": school_code,
@@ -939,6 +954,7 @@ def image_upload():
                             "drive_folder_id": folder_id,
                             "drive_web_link": uploaded_file.get("webViewLink")
                         })
+
             if upload_count == 0:
                 return "No valid image files selected. Allowed: png, jpg, jpeg"
             success = True
@@ -947,7 +963,7 @@ def image_upload():
             print("IMAGE UPLOAD ERROR:")
             print(error_text)
             return f"<pre>Error occurred:\n{error_text}</pre>"
-    return render_template_string(IMAGE_UPLOAD_TEMPLATE, success=success)
+    return render_template_string(IMAGE_UPLOAD_TEMPLATE, success=success, upload_count=locals().get("upload_count", 0))
 
 
 # ========================
