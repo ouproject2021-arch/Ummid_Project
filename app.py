@@ -138,7 +138,45 @@ MENU_TEMPLATE = """
 SCHOOL_ENTRY_TEMPLATE = """
 <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 """ + BASE_STYLE + """
-<script>function calculateTotal(){var boys=parseInt(document.getElementById('boys').value)||0;var girls=parseInt(document.getElementById('girls').value)||0;document.getElementById('total').value=boys+girls;}</script>
+<script>
+function calculateTotal(){
+    var boys=parseInt(document.getElementById('boys').value)||0;
+    var girls=parseInt(document.getElementById('girls').value)||0;
+    document.getElementById('total').value=boys+girls;
+}
+
+function validateSchoolCode(){
+    var schoolCodeInput = document.getElementById('school_code');
+    var submitButton = document.getElementById('save_school_button');
+
+    if (!schoolCodeInput) return;
+
+    var schoolCode = schoolCodeInput.value.trim();
+
+    if (submitButton) {
+        submitButton.disabled = false;
+    }
+
+    if (!schoolCode) return;
+
+    fetch('/check-school-code/' + encodeURIComponent(schoolCode))
+        .then(function(response){ return response.json(); })
+        .then(function(data){
+            if(data.exists){
+                alert('Duplicate School Code detected. Please enter a unique School Code.');
+                schoolCodeInput.value = '';
+                schoolCodeInput.focus();
+
+                if (submitButton) {
+                    submitButton.disabled = true;
+                }
+            }
+        })
+        .catch(function(error){
+            console.log('School Code validation failed:', error);
+        });
+}
+</script>
 </head><body>
 """ + HEADER_HTML + """
 <div class="container"><div class="form-card"><h2>School Data Entry</h2><form method="post"><div class="form-grid">
@@ -154,7 +192,7 @@ SCHOOL_ENTRY_TEMPLATE = """
 <div class="form-group"><label>FY</label><input name="fy"></div>
 <div class="form-group"><label>Phase</label><select name="phase"><option>1st Phase</option><option>2nd Phase</option><option>3rd Phase</option><option>4th Phase</option></select></div>
 <div class="form-group full"><label>Remarks</label><textarea name="remarks"></textarea></div>
-</div><button type="submit">Save School Data</button></form>{% if success %}<p class="success">School data saved to Supabase ✅</p>{% endif %}</div></div></body></html>
+</div><button id="save_school_button" type="submit">Save School Data</button></form>{% if success %}<p class="success">School data saved to Supabase ✅</p>{% endif %}</div></div></body></html>
 """
 
 IMAGE_UPLOAD_TEMPLATE = """
@@ -237,11 +275,37 @@ EDIT_RECORD_TEMPLATE = """
 <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 """ + BASE_STYLE + """
 <script>function calculateTotal(){var boys=parseInt(document.getElementById('boys').value)||0;var girls=parseInt(document.getElementById('girls').value)||0;document.getElementById('total').value=boys+girls;}</script>
+
+<script>
+function validateEditSchoolCode(){
+    var schoolCodeInput = document.getElementById('school_code');
+    if (!schoolCodeInput) return;
+
+    var schoolCode = schoolCodeInput.value.trim();
+    var originalSchoolCode = "{{ record.school_code }}";
+
+    if (!schoolCode || schoolCode === originalSchoolCode) return;
+
+    fetch('/check-school-code/' + encodeURIComponent(schoolCode))
+        .then(function(response){ return response.json(); })
+        .then(function(data){
+            if(data.exists){
+                alert('Duplicate School Code detected. Please enter a unique School Code.');
+                schoolCodeInput.value = originalSchoolCode;
+                schoolCodeInput.focus();
+            }
+        })
+        .catch(function(error){
+            console.log('School Code validation failed:', error);
+        });
+}
+</script>
+
 </head><body>
 """ + HEADER_HTML + """
 <div class="container"><div class="form-card"><h2>Edit School Record</h2><form method="post"><div class="form-grid">
 <div class="form-group"><label>UDISC Number</label><input name="udisc" value="{{ record.udisc_number }}" required></div>
-<div class="form-group"><label>School Code</label><input name="school_code" value="{{ record.school_code }}" required></div>
+<div class="form-group"><label>School Code</label><input id="school_code" name="school_code" value="{{ record.school_code }}" required onblur="validateEditSchoolCode()"></div>
 <div class="form-group"><label>School_Name</label><input name="school_name" value="{{ record.school_name }}" required></div>
 <div class="form-group"><label>Location</label><input name="location" value="{{ record.location }}"></div>
 <div class="form-group"><label>Year of Establishment</label><input name="year" value="{{ record.year }}"></div>
@@ -738,6 +802,10 @@ def school_entry():
             udisc_number = request.form.get('udisc', '').strip()
             if not school_code:
                 return "School code is required"
+
+            if school_code_exists(school_code):
+                return "<script>alert('Duplicate School Code detected. Please enter a unique School Code.');window.history.back();</script>"
+
             if not school_name:
                 return "School name is required"
             if not udisc_number:
@@ -766,19 +834,6 @@ def school_entry():
     return render_template_string(SCHOOL_ENTRY_TEMPLATE, success=success)
 
 
-
-@app.route('/check-school-code/<school_code>')
-def check_school_code(school_code):
-    if 'user' not in session:
-        return {"exists": False}
-
-    try:
-        exists = school_code_exists(school_code.strip())
-        return {"exists": exists}
-    except Exception:
-        return {"exists": False}
-
-
 @app.route('/get-school-by-udisc/<udisc_number>')
 def get_school_by_udisc_route(udisc_number):
     if 'user' not in session:
@@ -800,6 +855,27 @@ def get_school_by_udisc_route(udisc_number):
         print("UDISC LOOKUP ERROR:")
         print(traceback.format_exc())
         return {"found": False, "error": str(e)}
+
+
+
+@app.route('/check-school-code/<path:school_code>')
+def check_school_code(school_code):
+    if 'user' not in session:
+        return {"exists": False}
+
+    try:
+        school_code = school_code.strip()
+
+        if not school_code:
+            return {"exists": False}
+
+        exists = school_code_exists(school_code)
+        return {"exists": exists}
+
+    except Exception as e:
+        print("SCHOOL CODE CHECK ERROR:")
+        print(traceback.format_exc())
+        return {"exists": False, "error": str(e)}
 
 
 # ========================
@@ -900,7 +976,7 @@ def edit_record(record_id):
             if not school_code:
                 return "School code is required"
 
-            if school_code_exists(school_code):
+            if school_code_exists(school_code, record_id):
                 return "<script>alert('Duplicate School Code detected. Please enter a unique School Code.');window.history.back();</script>"
 
             if not school_name:
