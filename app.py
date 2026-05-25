@@ -56,6 +56,21 @@ drive_service = None
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
+
+# ========================
+# PROJECT MASTER CONFIG
+# ========================
+
+PROJECT_MASTER_LIST = [
+    {"slug": "education", "name": "Education"},
+    {"slug": "women-empowerment", "name": "Women Empowerment"},
+    {"slug": "agriculture", "name": "Agriculture"},
+    {"slug": "environmental-climate", "name": "Environmental/Climate"},
+    {"slug": "health-hygiene", "name": "Health & Hygiene"},
+    {"slug": "hunger-malnutrition", "name": "Hunger & Malnutrition"},
+]
+
+
 # ========================
 # HTML TEMPLATES
 # ========================
@@ -367,6 +382,7 @@ HEADER_HTML = """
     </div>
     <div>
         <a href="/menu">Menu</a>
+        <a href="/projects">Projects</a>
         <a href="/records">Records</a>
         <a href="/export">Download Excel</a>
         <a href="/oauth-status">OAuth Status</a>
@@ -393,13 +409,98 @@ LOGIN_TEMPLATE = """
 MENU_TEMPLATE = """
 <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 """ + BASE_STYLE + """
+<style>
+.project-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:18px;}
+.project-card{display:block;text-decoration:none;color:#1f2937;background:linear-gradient(135deg,#ffffff,#f1f8e9);border:1px solid #d9e2dd;border-radius:16px;padding:18px;box-shadow:0 8px 20px rgba(15,23,42,0.08);transition:all .2s ease;}
+.project-card:hover{transform:translateY(-3px);box-shadow:0 12px 26px rgba(15,23,42,0.14);border-color:#2e7d32;}
+.project-card strong{color:#1b5e20;font-size:18px;display:block;margin-bottom:6px;}
+.quick-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px;}
+@media(max-width:700px){.project-grid,.quick-actions{grid-template-columns:1fr;}}
+</style>
 </head><body>
 """ + HEADER_HTML + """
-<div class="container"><div class="menu-card"><h2>Dashboard Menu</h2>
-<div class="page-note">Choose an option below to continue.</div>
+<div class="container"><div class="menu-card" style="max-width:1100px;"><h2>Ummid Foundation Project Dashboard</h2>
+<div class="page-note">Select a project page below to maintain project master information and continue data entry/upload work.</div>
+<div class="project-grid">
+{% for project in projects %}
+<a class="project-card" href="/project/{{ project.slug }}">
+<strong>{{ project.name }}</strong>
+<span>Project master, FY, company, cost and details</span>
+</a>
+{% endfor %}
+</div>
+<div class="quick-actions">
 <a class="menu-button" href="/school-entry">School Data Entry</a>
 <a class="menu-button secondary" href="/image-upload">Image Upload</a>
 <a class="menu-button" href="/records">View Records</a>
+</div>
+</div></div></body></html>
+"""
+
+PROJECTS_TEMPLATE = """
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+""" + BASE_STYLE + """
+<style>
+.project-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:18px;}
+.project-card{display:block;text-decoration:none;color:#1f2937;background:linear-gradient(135deg,#ffffff,#f1f8e9);border:1px solid #d9e2dd;border-radius:16px;padding:18px;box-shadow:0 8px 20px rgba(15,23,42,0.08);transition:all .2s ease;}
+.project-card:hover{transform:translateY(-3px);box-shadow:0 12px 26px rgba(15,23,42,0.14);border-color:#2e7d32;}
+.project-card strong{color:#1b5e20;font-size:18px;display:block;margin-bottom:6px;}
+@media(max-width:700px){.project-grid{grid-template-columns:1fr;}}
+</style>
+</head><body>
+""" + HEADER_HTML + """
+<div class="container"><div class="menu-card" style="max-width:1000px;"><h2>Project Pages</h2>
+<div class="page-note">Six core project areas of Ummid Foundation.</div>
+<div class="project-grid">
+{% for project in projects %}
+<a class="project-card" href="/project/{{ project.slug }}">
+<strong>{{ project.name }}</strong>
+<span>Open project master page</span>
+</a>
+{% endfor %}
+</div>
+</div></div></body></html>
+"""
+
+PROJECT_MASTER_TEMPLATE = """
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+""" + BASE_STYLE + """
+<style>
+.action-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px;}
+.summary-box{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+.summary-item{background:#f1f8e9;border:1px solid #c8e6c9;border-radius:14px;padding:12px;text-align:center;}
+.summary-item strong{display:block;color:#1b5e20;font-size:20px;}
+@media(max-width:800px){.action-row,.summary-box{grid-template-columns:1fr;}}
+</style>
+</head><body>
+""" + HEADER_HTML + """
+<div class="container"><div class="form-card" style="max-width:1000px;"><h2>{{ project.project_name }}</h2>
+<div class="summary-box">
+<div class="summary-item"><strong>{{ stats.total_records }}</strong><span>Records</span></div>
+<div class="summary-item"><strong>{{ stats.total_uploads }}</strong><span>Uploads</span></div>
+<div class="summary-item"><strong>{{ project.fy or 'N/A' }}</strong><span>FY</span></div>
+<div class="summary-item"><strong>₹ {{ project.project_cost or '0' }}</strong><span>Cost</span></div>
+</div>
+<form method="post"><div class="form-grid">
+<input type="hidden" name="slug" value="{{ project.slug }}">
+<div class="form-group"><label>Project Name</label><input name="project_name" value="{{ project.project_name }}" readonly></div>
+<div class="form-group"><label>Company Name</label><input name="company_name" value="{{ project.company_name or '' }}" placeholder="CSR Partner / Company Name"></div>
+<div class="form-group"><label>FY</label><input name="fy" value="{{ project.fy or '' }}" placeholder="FY 2025-26"></div>
+<div class="form-group"><label>Project Cost</label><input name="project_cost" value="{{ project.project_cost or '' }}" placeholder="Example: 500000"></div>
+<div class="form-group"><label>Status</label><select name="status">
+<option {% if project.status == 'Planning' %}selected{% endif %}>Planning</option>
+<option {% if project.status == 'In Progress' %}selected{% endif %}>In Progress</option>
+<option {% if project.status == 'Completed' %}selected{% endif %}>Completed</option>
+<option {% if project.status == 'On Hold' %}selected{% endif %}>On Hold</option>
+</select></div>
+<div class="form-group full"><label>About the Project</label><textarea name="about_project" placeholder="Write project objective, scope, beneficiary details and implementation notes">{{ project.about_project or '' }}</textarea></div>
+</div><button type="submit">Save Project Master</button></form>
+{% if success %}<p class="success">Project master updated successfully ✅</p>{% endif %}
+<div class="action-row">
+<a class="menu-button" href="/school-entry?project={{ project.slug }}">Add Data Entry</a>
+<a class="menu-button secondary" href="/image-upload?project={{ project.slug }}">Upload Pics/Files</a>
+<a class="menu-button" href="/records">View Records</a>
+</div>
 </div></div></body></html>
 """
 
@@ -448,6 +549,9 @@ function validateSchoolCode(){
 </head><body>
 """ + HEADER_HTML + """
 <div class="container"><div class="form-card"><h2>School Data Entry</h2><form method="post"><div class="form-grid">
+<div class="form-group full"><label>Project</label><select name="project_slug">
+{% for project in projects %}<option value="{{ project.slug }}" {% if project.slug == selected_project %}selected{% endif %}>{{ project.name }}</option>{% endfor %}
+</select></div>
 <div class="form-group"><label>UDISC Number</label><input name="udisc" required></div>
 <div class="form-group"><label>School Code</label><input id="school_code" name="school_code" required onblur="validateSchoolCode()"></div>
 <div class="form-group"><label>School_Name</label><input name="school_name" required></div>
@@ -501,6 +605,9 @@ function fetchSchoolByUdisc() {
 </head><body>
 """ + HEADER_HTML + """
 <div class="container"><div class="form-card"><h2>Image Upload</h2><p class="page-note">You can upload multiple images for Smart Class, RO, Sanitary, and Toilet. Images will be added to the same Google Drive folder based on UDISC Number + School Code.</p><form method="post" enctype="multipart/form-data"><div class="form-grid">
+<div class="form-group full"><label>Project</label><select name="project_slug">
+{% for project in projects %}<option value="{{ project.slug }}" {% if project.slug == selected_project %}selected{% endif %}>{{ project.name }}</option>{% endfor %}
+</select></div>
 <div class="form-group">
 <label>UDISC Number</label>
 <input name="udisc" id="udisc" required onblur="fetchSchoolByUdisc()">
@@ -525,9 +632,9 @@ RECORDS_TEMPLATE = """
 </head><body>
 """ + HEADER_HTML + """
 <div class="container"><div class="form-card" style="max-width:1200px;"><h2>Saved School Records</h2><div class="toolbar"><input id="recordSearch" class="search-box" onkeyup="filterRecordsTable()" placeholder="Search by UDISC, School Code, Name, FY..."><span class="badge">Total Records: {{ records|length }}</span></div><div class="table-wrap"><table id="recordsTable">
-<thead><tr><th>ID</th><th>UDISC</th><th>School Code</th>
+<thead><tr><th>ID</th><th>Project</th><th>UDISC</th><th>School Code</th>
 <th>School_Name</th><th>Location</th><th>Year</th><th>Girls</th><th>Boys</th><th>Total</th><th>Company</th><th>FY</th><th>Phase</th><th>Remarks</th><th>Created</th><th>Google Drive Folder</th><th>Action</th></tr></thead>
-<tbody>{% for row in records %}<tr><td>{{ loop.index }}</td><td>{{ row.udisc_number }}</td><td>{{ row.school_code }}</td>
+<tbody>{% for row in records %}<tr><td>{{ loop.index }}</td><td>{{ row.project_slug or "education" }}</td><td>{{ row.udisc_number }}</td><td>{{ row.school_code }}</td>
 <td>{{ row.school_name }}</td><td>{{ row.location }}</td><td>{{ row.year }}</td><td>{{ row.girls }}</td><td>{{ row.boys }}</td><td>{{ row.total_students }}</td><td>{{ row.company_name }}</td><td>{{ row.fy }}</td><td>{{ row.phase }}</td><td>{{ row.remarks }}</td><td>{{ row.created_at }}</td>
 <td>
 {% if row.drive_folder_link %}
@@ -650,11 +757,35 @@ def init_db():
             uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS project_master (
+            id SERIAL PRIMARY KEY,
+            slug TEXT UNIQUE NOT NULL,
+            project_name TEXT NOT NULL,
+            about_project TEXT,
+            company_name TEXT,
+            fy TEXT,
+            project_cost NUMERIC DEFAULT 0,
+            status TEXT DEFAULT 'Planning',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
 
     cur.execute("ALTER TABLE school_records ADD COLUMN IF NOT EXISTS school_code TEXT")
     cur.execute("ALTER TABLE school_records ADD COLUMN IF NOT EXISTS school_name TEXT")
+    cur.execute("ALTER TABLE school_records ADD COLUMN IF NOT EXISTS project_slug TEXT")
     cur.execute("ALTER TABLE image_uploads ADD COLUMN IF NOT EXISTS school_code TEXT")
     cur.execute("ALTER TABLE image_uploads ADD COLUMN IF NOT EXISTS school_name TEXT")
+    cur.execute("ALTER TABLE image_uploads ADD COLUMN IF NOT EXISTS project_slug TEXT")
+
+    for project in PROJECT_MASTER_LIST:
+        cur.execute("""
+            INSERT INTO project_master (slug, project_name)
+            VALUES (%s, %s)
+            ON CONFLICT (slug) DO NOTHING
+        """, (project["slug"], project["name"]))
+
     conn.commit()
     cur.close()
     conn.close()
@@ -667,12 +798,12 @@ def save_school_to_db(data):
     cur.execute("""
         INSERT INTO school_records (
             udisc_number, school_code, school_name, location, year, girls, boys, total_students,
-            company_name, fy, phase, remarks
-        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            company_name, fy, phase, remarks, project_slug
+        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
     """, (
         data["UDISC Number"], data["School Code"], data["School_Name"], data["Location"], data["Year"],
         data["Girls"], data["Boys"], data["Total Students"], data["Company Name"],
-        data["FY"], data["Phase"], data["Remarks"]
+        data["FY"], data["Phase"], data["Remarks"], data.get("Project Slug", "education")
     ))
     conn.commit()
     cur.close()
@@ -686,17 +817,87 @@ def save_image_to_db(data):
     cur.execute("""
         INSERT INTO image_uploads (
             udisc_number, school_code, school_name, category, original_filename,
-            drive_file_id, drive_file_name, drive_folder_id, drive_web_link
-        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            drive_file_id, drive_file_name, drive_folder_id, drive_web_link, project_slug
+        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
     """, (
         data["udisc_number"], data["school_code"], data["school_name"], data["category"],
         data["original_filename"], data["drive_file_id"], data["drive_file_name"],
-        data["drive_folder_id"], data["drive_web_link"]
+        data["drive_folder_id"], data["drive_web_link"], data.get("project_slug", "education")
     ))
     conn.commit()
     cur.close()
     conn.close()
 
+
+
+
+def get_project_master(slug):
+    init_db()
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT id, slug, project_name, about_project, company_name, fy, project_cost, status, created_at, updated_at
+        FROM project_master
+        WHERE slug = %s
+    """, (slug,))
+    project = cur.fetchone()
+    cur.close()
+    conn.close()
+    return project
+
+
+def get_all_project_master():
+    init_db()
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT id, slug, project_name, about_project, company_name, fy, project_cost, status, created_at, updated_at
+        FROM project_master
+        ORDER BY id ASC
+    """)
+    projects = cur.fetchall()
+    cur.close()
+    conn.close()
+    return projects
+
+
+def update_project_master(slug, data):
+    init_db()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE project_master
+        SET about_project = %s,
+            company_name = %s,
+            fy = %s,
+            project_cost = %s,
+            status = %s,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE slug = %s
+    """, (
+        data.get("about_project", ""),
+        data.get("company_name", ""),
+        data.get("fy", ""),
+        data.get("project_cost") or 0,
+        data.get("status", "Planning"),
+        slug
+    ))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def get_project_stats(slug):
+    init_db()
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("SELECT COUNT(*) AS total_records FROM school_records WHERE project_slug = %s", (slug,))
+    record_count = cur.fetchone()["total_records"]
+    cur.execute("SELECT COUNT(*) AS total_uploads FROM image_uploads WHERE project_slug = %s", (slug,))
+    upload_count = cur.fetchone()["total_uploads"]
+    cur.close()
+    conn.close()
+    return {"total_records": record_count, "total_uploads": upload_count}
 
 
 
@@ -746,7 +947,7 @@ def get_school_record_by_id(record_id):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
         SELECT id, udisc_number, school_code, school_name, location, year, girls, boys,
-               total_students, company_name, fy, phase, remarks, created_at
+               total_students, company_name, fy, phase, remarks, project_slug, created_at
         FROM school_records
         WHERE id = %s
     """, (record_id,))
@@ -812,7 +1013,7 @@ def get_school_records():
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
         SELECT id, udisc_number, school_code, school_name, location, year, girls, boys,
-               total_students, company_name, fy, phase, remarks, created_at
+               total_students, company_name, fy, phase, remarks, project_slug, created_at
         FROM school_records
         ORDER BY id DESC
     """)
@@ -1120,7 +1321,47 @@ def login():
 def menu():
     if 'user' not in session:
         return redirect('/')
-    return render_template_string(MENU_TEMPLATE)
+    return render_template_string(MENU_TEMPLATE, projects=PROJECT_MASTER_LIST)
+
+
+@app.route('/projects')
+def projects():
+    if 'user' not in session:
+        return redirect('/')
+    return render_template_string(PROJECTS_TEMPLATE, projects=PROJECT_MASTER_LIST)
+
+
+@app.route('/project/<slug>', methods=['GET', 'POST'])
+def project_master(slug):
+    if 'user' not in session:
+        return redirect('/')
+
+    allowed_slugs = [project["slug"] for project in PROJECT_MASTER_LIST]
+    if slug not in allowed_slugs:
+        return "Project not found"
+
+    success = False
+    try:
+        init_db()
+        if request.method == 'POST':
+            update_project_master(slug, {
+                "about_project": request.form.get("about_project", ""),
+                "company_name": request.form.get("company_name", ""),
+                "fy": request.form.get("fy", ""),
+                "project_cost": request.form.get("project_cost", 0),
+                "status": request.form.get("status", "Planning")
+            })
+            success = True
+
+        project = get_project_master(slug)
+        stats = get_project_stats(slug)
+        return render_template_string(PROJECT_MASTER_TEMPLATE, project=project, stats=stats, success=success)
+
+    except Exception as e:
+        error_text = traceback.format_exc()
+        print("PROJECT MASTER ERROR:")
+        print(error_text)
+        return f"<pre>Error occurred:\n{error_text}</pre>"
 
 
 @app.route('/dashboard', methods=['GET', 'POST'])
@@ -1165,7 +1406,8 @@ def school_entry():
                 "Company Name": request.form.get('company', ''),
                 "FY": request.form.get('fy', ''),
                 "Phase": request.form.get('phase', ''),
-                "Remarks": request.form.get('remarks', '')
+                "Remarks": request.form.get('remarks', ''),
+                "Project Slug": request.form.get('project_slug', 'education')
             }
             save_school_to_db(data)
             success = True
@@ -1174,7 +1416,8 @@ def school_entry():
             print("SCHOOL ENTRY ERROR:")
             print(error_text)
             return f"<pre>Error occurred:\n{error_text}</pre>"
-    return render_template_string(SCHOOL_ENTRY_TEMPLATE, success=success)
+    selected_project = request.args.get('project', 'education')
+    return render_template_string(SCHOOL_ENTRY_TEMPLATE, success=success, projects=PROJECT_MASTER_LIST, selected_project=selected_project)
 
 
 @app.route('/get-school-by-udisc/<udisc_number>')
@@ -1288,7 +1531,8 @@ def image_upload():
                             "drive_file_id": uploaded_file.get("id"),
                             "drive_file_name": uploaded_file.get("name"),
                             "drive_folder_id": folder_id,
-                            "drive_web_link": uploaded_file.get("webViewLink")
+                            "drive_web_link": uploaded_file.get("webViewLink"),
+                            "project_slug": request.form.get('project_slug', 'education')
                         })
 
             if upload_count == 0:
@@ -1299,7 +1543,8 @@ def image_upload():
             print("IMAGE UPLOAD ERROR:")
             print(error_text)
             return f"<pre>Error occurred:\n{error_text}</pre>"
-    return render_template_string(IMAGE_UPLOAD_TEMPLATE, success=success, upload_count=locals().get("upload_count", 0))
+    selected_project = request.args.get('project', 'education')
+    return render_template_string(IMAGE_UPLOAD_TEMPLATE, success=success, upload_count=locals().get("upload_count", 0), projects=PROJECT_MASTER_LIST, selected_project=selected_project)
 
 
 # ========================
@@ -1414,6 +1659,7 @@ def export():
             df.insert(0, "ID", range(1, len(df) + 1))
 
             rename_map = {
+                "project_slug": "Project",
                 "udisc_number": "UDISC",
                 "school_code": "School Code",
                 "school_name": "School_Name",
@@ -1437,6 +1683,7 @@ def export():
 
             ordered_columns = [
                 "ID",
+                "Project",
                 "UDISC",
                 "School Code",
                 "School_Name",
