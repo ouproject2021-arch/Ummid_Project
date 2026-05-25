@@ -429,11 +429,6 @@ MENU_TEMPLATE = """
 </a>
 {% endfor %}
 </div>
-<div class="quick-actions">
-<a class="menu-button" href="/school-entry">School Data Entry</a>
-<a class="menu-button secondary" href="/image-upload">Image Upload</a>
-<a class="menu-button" href="/records">View Records</a>
-</div>
 </div></div></body></html>
 """
 
@@ -483,7 +478,10 @@ PROJECT_MASTER_TEMPLATE = """
 </div>
 <form method="post"><div class="form-grid">
 <input type="hidden" name="slug" value="{{ project.slug }}">
-<div class="form-group"><label>Project Name</label><input name="project_name" value="{{ project.project_name }}" readonly></div>
+<div class="form-group"><label>Project Area</label><input name="project_name" value="{{ project.project_name }}" readonly></div>
+<div class="form-group"><label>Project ID</label><input name="project_id" value="{{ project.project_id or '' }}" placeholder="Example: EDU-2025-26-01" required></div>
+<div class="form-group"><label>Project Title</label><input name="project_title" value="{{ project.project_title or '' }}" placeholder="Enter project title" required></div>
+{% if project.slug != 'education' %}<div class="form-group"><label>Company Code</label><input name="company_code" value="{{ project.company_code or '' }}" placeholder="Example: CUBIC01" required></div>{% endif %}
 <div class="form-group"><label>Company Name</label><input name="company_name" value="{{ project.company_name or '' }}" placeholder="CSR Partner / Company Name"></div>
 <div class="form-group"><label>FY</label><input name="fy" value="{{ project.fy or '' }}" placeholder="FY 2025-26"></div>
 <div class="form-group"><label>Project Cost</label><input name="project_cost" value="{{ project.project_cost or '' }}" placeholder="Example: 500000"></div>
@@ -497,9 +495,9 @@ PROJECT_MASTER_TEMPLATE = """
 </div><button type="submit">Save Project Master</button></form>
 {% if success %}<p class="success">Project master updated successfully ✅</p>{% endif %}
 <div class="action-row">
-<a class="menu-button" href="/school-entry?project={{ project.slug }}">Add Data Entry</a>
+{% if project.slug == 'education' %}<a class="menu-button" href="/school-entry?project={{ project.slug }}">Add Data Entry</a>{% endif %}
 <a class="menu-button secondary" href="/image-upload?project={{ project.slug }}">Upload Pics/Files</a>
-<a class="menu-button" href="/records">View Records</a>
+{% if project.slug == 'education' %}<a class="menu-button" href="/records?project={{ project.slug }}">View Records</a>{% else %}<a class="menu-button" href="/upload-records?project={{ project.slug }}">View Records</a>{% endif %}
 </div>
 </div></div></body></html>
 """
@@ -549,9 +547,10 @@ function validateSchoolCode(){
 </head><body>
 """ + HEADER_HTML + """
 <div class="container"><div class="form-card"><h2>School Data Entry</h2><form method="post"><div class="form-grid">
-<div class="form-group full"><label>Project</label><select name="project_slug">
-{% for project in projects %}<option value="{{ project.slug }}" {% if project.slug == selected_project %}selected{% endif %}>{{ project.name }}</option>{% endfor %}
-</select></div>
+<input type="hidden" name="project_slug" value="education">
+<div class="form-group"><label>Project Area</label><input value="Education" readonly></div>
+<div class="form-group"><label>Project ID</label><input name="project_id" value="{{ project_master.project_id or '' }}" readonly></div>
+<div class="form-group full"><label>Project Title</label><input value="{{ project_master.project_title or '' }}" readonly></div>
 <div class="form-group"><label>UDISC Number</label><input name="udisc" required></div>
 <div class="form-group"><label>School Code</label><input id="school_code" name="school_code" required onblur="validateSchoolCode()"></div>
 <div class="form-group"><label>School_Name</label><input name="school_name" required></div>
@@ -572,18 +571,17 @@ IMAGE_UPLOAD_TEMPLATE = """
 """ + BASE_STYLE + """
 <script>
 function fetchSchoolByUdisc() {
-    var udisc = document.getElementById('udisc').value.trim();
+    var udisc = document.getElementById('udisc');
     var schoolCodeInput = document.getElementById('school_code');
     var msg = document.getElementById('school_lookup_message');
+    if (!udisc || !schoolCodeInput || !msg) return;
 
     schoolCodeInput.value = "";
     msg.innerText = "";
 
-    if (!udisc) {
-        return;
-    }
+    if (!udisc.value.trim()) return;
 
-    fetch('/get-school-by-udisc/' + encodeURIComponent(udisc))
+    fetch('/get-school-by-udisc/' + encodeURIComponent(udisc.value.trim()))
         .then(function(response) { return response.json(); })
         .then(function(data) {
             if (data.found) {
@@ -601,29 +599,36 @@ function fetchSchoolByUdisc() {
         });
 }
 </script>
-
 </head><body>
 """ + HEADER_HTML + """
-<div class="container"><div class="form-card"><h2>Image Upload</h2><p class="page-note">You can upload multiple images for Smart Class, RO, Sanitary, and Toilet. Images will be added to the same Google Drive folder based on UDISC Number + School Code.</p><form method="post" enctype="multipart/form-data"><div class="form-grid">
-<div class="form-group full"><label>Project</label><select name="project_slug">
-{% for project in projects %}<option value="{{ project.slug }}" {% if project.slug == selected_project %}selected{% endif %}>{{ project.name }}</option>{% endfor %}
-</select></div>
-<div class="form-group">
-<label>UDISC Number</label>
-<input name="udisc" id="udisc" required onblur="fetchSchoolByUdisc()">
-</div>
-<div class="form-group">
-<label>School Code</label>
-<input name="school_code" id="school_code" readonly>
-</div>
-<div class="form-group full">
-<p id="school_lookup_message" style="margin:0; color:#1b5e20; font-weight:bold;"></p>
-</div>
+<div class="container"><div class="form-card"><h2>{{ project.project_name }} - Image Upload</h2>
+{% if project.slug == 'education' %}
+<p class="page-note">Folder will be created as Project ID_UDISC Number_School Code. You can upload multiple images for Smart Class, RO, Sanitary, Toilet and Other Photos.</p>
+<form method="post" enctype="multipart/form-data"><div class="form-grid">
+<input type="hidden" name="project_slug" value="education">
+<div class="form-group"><label>Project Area</label><input value="Education" readonly></div>
+<div class="form-group"><label>Project ID</label><input name="project_id" value="{{ project.project_id or '' }}" readonly required></div>
+<div class="form-group"><label>UDISC Number</label><input name="udisc" id="udisc" required onblur="fetchSchoolByUdisc()"></div>
+<div class="form-group"><label>School Code</label><input name="school_code" id="school_code" readonly required></div>
+<div class="form-group full"><p id="school_lookup_message" style="margin:0; color:#1b5e20; font-weight:bold;"></p></div>
 <div class="form-group full"><label>Smart Class Photos</label><input type="file" name="smart_class" accept="image/png,image/jpeg" multiple></div>
 <div class="form-group full"><label>RO Photos</label><input type="file" name="ro" accept="image/png,image/jpeg" multiple></div>
 <div class="form-group full"><label>Sanitary Photos</label><input type="file" name="sanitary" accept="image/png,image/jpeg" multiple></div>
 <div class="form-group full"><label>Toilet Photos</label><input type="file" name="toilet" accept="image/png,image/jpeg" multiple></div>
-</div><button type="submit">Upload Images</button></form>{% if success %}<p class="success">{{ upload_count }} image(s) uploaded to Google Drive ✅</p>{% endif %}</div></div></body></html>
+<div class="form-group full"><label>Other Photos</label><input type="file" name="other_photos" accept="image/png,image/jpeg" multiple></div>
+</div><button type="submit">Upload Images</button></form>
+{% else %}
+<p class="page-note">Folder will be created as Project ID_Company Code.</p>
+<form method="post" enctype="multipart/form-data"><div class="form-grid">
+<input type="hidden" name="project_slug" value="{{ project.slug }}">
+<div class="form-group"><label>Project Area</label><input value="{{ project.project_name }}" readonly></div>
+<div class="form-group"><label>Project ID</label><input name="project_id" value="{{ project.project_id or '' }}" readonly required></div>
+<div class="form-group"><label>Project Title</label><input value="{{ project.project_title or '' }}" readonly></div>
+<div class="form-group"><label>Company Code</label><input name="company_code" value="{{ project.company_code or '' }}" readonly required></div>
+<div class="form-group full"><label>Upload Photos / Files</label><input type="file" name="project_files" accept="image/png,image/jpeg,application/pdf,.doc,.docx,.xls,.xlsx" multiple required></div>
+</div><button type="submit">Upload Files</button></form>
+{% endif %}
+{% if success %}<p class="success">{{ upload_count }} file(s) uploaded to Google Drive ✅</p>{% endif %}</div></div></body></html>
 """
 
 RECORDS_TEMPLATE = """
@@ -651,6 +656,18 @@ N/A
 </td></tr>{% endfor %}</tbody>
 </table></div></div></div></body></html>
 """
+
+UPLOAD_RECORDS_TEMPLATE = """
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+""" + BASE_STYLE + """
+</head><body>
+""" + HEADER_HTML + """
+<div class="container"><div class="form-card" style="max-width:1200px;"><h2>{{ project_name }} Upload Records</h2><div class="toolbar"><input id="recordSearch" class="search-box" onkeyup="filterRecordsTable()" placeholder="Search by Project ID, Company Code, File Name..."><span class="badge">Total Uploads: {{ records|length }}</span></div><div class="table-wrap"><table id="recordsTable">
+<thead><tr><th>ID</th><th>Project</th><th>Project ID</th><th>Company Code / School Code</th><th>Category</th><th>File Name</th><th>Uploaded</th><th>Google Drive File</th></tr></thead>
+<tbody>{% for row in records %}<tr><td>{{ loop.index }}</td><td>{{ row.project_slug }}</td><td>{{ row.udisc_number }}</td><td>{{ row.school_code }}</td><td>{{ row.category }}</td><td>{{ row.original_filename }}</td><td>{{ row.uploaded_at }}</td><td>{% if row.drive_web_link %}<a class="action-link edit-link" href="{{ row.drive_web_link }}" target="_blank">Open File</a>{% else %}N/A{% endif %}</td></tr>{% endfor %}</tbody>
+</table></div></div></div></body></html>
+"""
+
 
 
 EDIT_RECORD_TEMPLATE = """
@@ -762,6 +779,9 @@ def init_db():
             id SERIAL PRIMARY KEY,
             slug TEXT UNIQUE NOT NULL,
             project_name TEXT NOT NULL,
+            project_id TEXT,
+            project_title TEXT,
+            company_code TEXT,
             about_project TEXT,
             company_name TEXT,
             fy TEXT,
@@ -778,6 +798,9 @@ def init_db():
     cur.execute("ALTER TABLE image_uploads ADD COLUMN IF NOT EXISTS school_code TEXT")
     cur.execute("ALTER TABLE image_uploads ADD COLUMN IF NOT EXISTS school_name TEXT")
     cur.execute("ALTER TABLE image_uploads ADD COLUMN IF NOT EXISTS project_slug TEXT")
+    cur.execute("ALTER TABLE project_master ADD COLUMN IF NOT EXISTS project_id TEXT")
+    cur.execute("ALTER TABLE project_master ADD COLUMN IF NOT EXISTS project_title TEXT")
+    cur.execute("ALTER TABLE project_master ADD COLUMN IF NOT EXISTS company_code TEXT")
 
     for project in PROJECT_MASTER_LIST:
         cur.execute("""
@@ -836,7 +859,7 @@ def get_project_master(slug):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
-        SELECT id, slug, project_name, about_project, company_name, fy, project_cost, status, created_at, updated_at
+        SELECT id, slug, project_name, project_id, project_title, company_code, about_project, company_name, fy, project_cost, status, created_at, updated_at
         FROM project_master
         WHERE slug = %s
     """, (slug,))
@@ -851,7 +874,7 @@ def get_all_project_master():
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
-        SELECT id, slug, project_name, about_project, company_name, fy, project_cost, status, created_at, updated_at
+        SELECT id, slug, project_name, project_id, project_title, company_code, about_project, company_name, fy, project_cost, status, created_at, updated_at
         FROM project_master
         ORDER BY id ASC
     """)
@@ -867,7 +890,10 @@ def update_project_master(slug, data):
     cur = conn.cursor()
     cur.execute("""
         UPDATE project_master
-        SET about_project = %s,
+        SET project_id = %s,
+            project_title = %s,
+            company_code = %s,
+            about_project = %s,
             company_name = %s,
             fy = %s,
             project_cost = %s,
@@ -875,6 +901,9 @@ def update_project_master(slug, data):
             updated_at = CURRENT_TIMESTAMP
         WHERE slug = %s
     """, (
+        data.get("project_id", ""),
+        data.get("project_title", ""),
+        data.get("company_code", ""),
         data.get("about_project", ""),
         data.get("company_name", ""),
         data.get("fy", ""),
@@ -1007,20 +1036,54 @@ def delete_school_record(record_id):
     conn.close()
 
 
-def get_school_records():
+def get_school_records(project_slug=None):
     init_db()
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    cur.execute("""
-        SELECT id, udisc_number, school_code, school_name, location, year, girls, boys,
-               total_students, company_name, fy, phase, remarks, project_slug, created_at
-        FROM school_records
-        ORDER BY id DESC
-    """)
+    if project_slug:
+        cur.execute("""
+            SELECT id, udisc_number, school_code, school_name, location, year, girls, boys,
+                   total_students, company_name, fy, phase, remarks, project_slug, created_at
+            FROM school_records
+            WHERE project_slug = %s
+            ORDER BY id DESC
+        """, (project_slug,))
+    else:
+        cur.execute("""
+            SELECT id, udisc_number, school_code, school_name, location, year, girls, boys,
+                   total_students, company_name, fy, phase, remarks, project_slug, created_at
+            FROM school_records
+            ORDER BY id DESC
+        """)
     records = cur.fetchall()
     cur.close()
     conn.close()
     return records
+
+def get_upload_records(project_slug=None):
+    init_db()
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    if project_slug:
+        cur.execute("""
+            SELECT id, udisc_number, school_code, school_name, category, original_filename,
+                   drive_file_id, drive_file_name, drive_folder_id, drive_web_link, project_slug, uploaded_at
+            FROM image_uploads
+            WHERE project_slug = %s
+            ORDER BY id DESC
+        """, (project_slug,))
+    else:
+        cur.execute("""
+            SELECT id, udisc_number, school_code, school_name, category, original_filename,
+                   drive_file_id, drive_file_name, drive_folder_id, drive_web_link, project_slug, uploaded_at
+            FROM image_uploads
+            ORDER BY id DESC
+        """)
+    records = cur.fetchall()
+    cur.close()
+    conn.close()
+    return records
+
 
 # ========================
 # GOOGLE DRIVE OAUTH HELPERS
@@ -1077,6 +1140,19 @@ def build_school_drive_folder_name(udisc_number, school_code):
     safe_udisc = secure_filename(str(udisc_number).strip())
     safe_school_code = secure_filename(str(school_code).strip())
     return f"{safe_udisc}_{safe_school_code}"
+
+
+def build_education_drive_folder_name(project_id, udisc_number, school_code):
+    safe_project_id = secure_filename(str(project_id).strip())
+    safe_udisc = secure_filename(str(udisc_number).strip())
+    safe_school_code = secure_filename(str(school_code).strip())
+    return f"{safe_project_id}_{safe_udisc}_{safe_school_code}"
+
+
+def build_other_project_drive_folder_name(project_id, company_code):
+    safe_project_id = secure_filename(str(project_id).strip())
+    safe_company_code = secure_filename(str(company_code).strip())
+    return f"{safe_project_id}_{safe_company_code}"
 
 
 def create_folder(name, parent_id):
@@ -1211,12 +1287,22 @@ def add_drive_folder_links_to_records(records):
 
         udisc_number = record_dict.get("udisc_number") or ""
         school_code = record_dict.get("school_code") or ""
+        project_slug = record_dict.get("project_slug") or "education"
 
+        record_dict["drive_folder_link"] = None
         if udisc_number and school_code:
-            folder_name = build_school_drive_folder_name(udisc_number, school_code)
-            record_dict["drive_folder_link"] = get_drive_folder_link_by_name(folder_name, PARENT_FOLDER_ID)
-        else:
-            record_dict["drive_folder_link"] = None
+            if project_slug == "education":
+                project = get_project_master("education")
+                project_id = (project or {}).get("project_id") or ""
+                if project_id:
+                    folder_name = build_education_drive_folder_name(project_id, udisc_number, school_code)
+                    record_dict["drive_folder_link"] = get_drive_folder_link_by_name(folder_name, PARENT_FOLDER_ID)
+                if not record_dict["drive_folder_link"]:
+                    old_folder_name = build_school_drive_folder_name(udisc_number, school_code)
+                    record_dict["drive_folder_link"] = get_drive_folder_link_by_name(old_folder_name, PARENT_FOLDER_ID)
+            else:
+                folder_name = build_other_project_drive_folder_name(udisc_number, school_code)
+                record_dict["drive_folder_link"] = get_drive_folder_link_by_name(folder_name, PARENT_FOLDER_ID)
 
         updated_records.append(record_dict)
 
@@ -1345,6 +1431,9 @@ def project_master(slug):
         init_db()
         if request.method == 'POST':
             update_project_master(slug, {
+                "project_id": request.form.get("project_id", ""),
+                "project_title": request.form.get("project_title", ""),
+                "company_code": request.form.get("company_code", ""),
                 "about_project": request.form.get("about_project", ""),
                 "company_name": request.form.get("company_name", ""),
                 "fy": request.form.get("fy", ""),
@@ -1417,7 +1506,8 @@ def school_entry():
             print(error_text)
             return f"<pre>Error occurred:\n{error_text}</pre>"
     selected_project = request.args.get('project', 'education')
-    return render_template_string(SCHOOL_ENTRY_TEMPLATE, success=success, projects=PROJECT_MASTER_LIST, selected_project=selected_project)
+    project_master_data = get_project_master('education')
+    return render_template_string(SCHOOL_ENTRY_TEMPLATE, success=success, projects=PROJECT_MASTER_LIST, selected_project=selected_project, project_master=project_master_data)
 
 
 @app.route('/get-school-by-udisc/<udisc_number>')
@@ -1473,78 +1563,116 @@ def image_upload():
     if 'user' not in session:
         return redirect('/')
     success = False
+    selected_project = request.args.get('project', request.form.get('project_slug', 'education'))
+    project = get_project_master(selected_project)
+    if not project:
+        return "Project not found"
     if request.method == 'POST':
         try:
-            udisc_number = request.form.get('udisc', '').strip()
-
-            if not udisc_number:
-                return "UDISC number is required"
-
-            school_record = get_school_by_udisc(udisc_number)
-
-            if not school_record:
-                return "No school record found for this UDISC Number. Please enter school data first."
-
-            school_code = (school_record.get("school_code") or "").strip()
-            school_name = (school_record.get("school_name") or "").strip()
-
-            if not school_code:
-                return "School code not found in database for this UDISC Number"
-
-            if not school_name:
-                return "School name not found in database for this UDISC Number"
-
-            main_folder_name = build_school_drive_folder_name(udisc_number, school_code)
-            school_folder_id = create_folder(main_folder_name, PARENT_FOLDER_ID)
-            if not school_folder_id:
-                return "❌ Failed to create School folder in Google Drive. Open /authorize first."
-            folders = {
-                "smart_class": create_folder("Smart_Class", school_folder_id),
-                "ro": create_folder("RO", school_folder_id),
-                "sanitary": create_folder("Sanitary", school_folder_id),
-                "toilet": create_folder("Toilet", school_folder_id)
-            }
             upload_count = 0
+            if selected_project == 'education':
+                project_id = (request.form.get('project_id') or project.get('project_id') or '').strip()
+                udisc_number = request.form.get('udisc', '').strip()
 
-            for field, folder_id in folders.items():
+                if not project_id:
+                    return "Project ID is required in Education project master"
+                if not udisc_number:
+                    return "UDISC number is required"
 
-                if not folder_id:
-                    print(f"⚠ Skipping {field} folder")
-                    continue
+                school_record = get_school_by_udisc(udisc_number)
 
-                selected_files = request.files.getlist(field)
+                if not school_record:
+                    return "No school record found for this UDISC Number. Please enter school data first."
 
+                school_code = (school_record.get("school_code") or "").strip()
+                school_name = (school_record.get("school_name") or "").strip()
+
+                if not school_code:
+                    return "School code not found in database for this UDISC Number"
+
+                if not school_name:
+                    return "School name not found in database for this UDISC Number"
+
+                main_folder_name = build_education_drive_folder_name(project_id, udisc_number, school_code)
+                school_folder_id = create_folder(main_folder_name, PARENT_FOLDER_ID)
+                if not school_folder_id:
+                    return "❌ Failed to create School folder in Google Drive. Open /authorize first."
+                folders = {
+                    "smart_class": create_folder("Smart_Class", school_folder_id),
+                    "ro": create_folder("RO", school_folder_id),
+                    "sanitary": create_folder("Sanitary", school_folder_id),
+                    "toilet": create_folder("Toilet", school_folder_id),
+                    "other_photos": create_folder("Other_Photos", school_folder_id)
+                }
+
+                for field, folder_id in folders.items():
+
+                    if not folder_id:
+                        print(f"⚠ Skipping {field} folder")
+                        continue
+
+                    selected_files = request.files.getlist(field)
+
+                    for file in selected_files:
+
+                        if file and file.filename and allowed_file(file.filename):
+
+                            uploaded_file = upload_file(file, folder_id)
+
+                            upload_count += 1
+
+                            save_image_to_db({
+                                "udisc_number": udisc_number,
+                                "school_code": school_code,
+                                "school_name": school_name,
+                                "category": field,
+                                "original_filename": file.filename,
+                                "drive_file_id": uploaded_file.get("id"),
+                                "drive_file_name": uploaded_file.get("name"),
+                                "drive_folder_id": folder_id,
+                                "drive_web_link": uploaded_file.get("webViewLink"),
+                                "project_slug": selected_project
+                            })
+            else:
+                project_id = (request.form.get('project_id') or project.get('project_id') or '').strip()
+                company_code = (request.form.get('company_code') or project.get('company_code') or '').strip()
+                if not project_id:
+                    return "Project ID is required in project master"
+                if not company_code:
+                    return "Company Code is required in project master"
+
+                main_folder_name = build_other_project_drive_folder_name(project_id, company_code)
+                project_folder_id = create_folder(main_folder_name, PARENT_FOLDER_ID)
+                if not project_folder_id:
+                    return "❌ Failed to create Project folder in Google Drive. Open /authorize first."
+
+                selected_files = request.files.getlist('project_files')
                 for file in selected_files:
-
-                    if file and file.filename and allowed_file(file.filename):
-
-                        uploaded_file = upload_file(file, folder_id)
-
+                    if file and file.filename:
+                        uploaded_file = upload_file(file, project_folder_id)
                         upload_count += 1
-
                         save_image_to_db({
-                            "udisc_number": udisc_number,
-                            "school_code": school_code,
-                            "school_name": school_name,
-                            "category": field,
+                            "udisc_number": project_id,
+                            "school_code": company_code,
+                            "school_name": project.get('project_name') or selected_project,
+                            "category": "project_files",
                             "original_filename": file.filename,
                             "drive_file_id": uploaded_file.get("id"),
                             "drive_file_name": uploaded_file.get("name"),
-                            "drive_folder_id": folder_id,
+                            "drive_folder_id": project_folder_id,
                             "drive_web_link": uploaded_file.get("webViewLink"),
-                            "project_slug": request.form.get('project_slug', 'education')
+                            "project_slug": selected_project
                         })
 
             if upload_count == 0:
-                return "No valid image files selected. Allowed: png, jpg, jpeg"
+                return "No valid files selected."
             success = True
         except Exception as e:
             error_text = traceback.format_exc()
             print("IMAGE UPLOAD ERROR:")
             print(error_text)
             return f"<pre>Error occurred:\n{error_text}</pre>"
-    selected_project = request.args.get('project', 'education')
-    return render_template_string(IMAGE_UPLOAD_TEMPLATE, success=success, upload_count=locals().get("upload_count", 0), projects=PROJECT_MASTER_LIST, selected_project=selected_project)
+    return render_template_string(IMAGE_UPLOAD_TEMPLATE, success=success, upload_count=locals().get("upload_count", 0), project=project)
 
 
 # ========================
@@ -1635,12 +1763,32 @@ def records():
     if 'user' not in session:
         return redirect('/')
     try:
-        school_records = get_school_records()
+        selected_project = request.args.get('project')
+        school_records = get_school_records(selected_project)
         school_records = add_drive_folder_links_to_records(school_records)
         return render_template_string(RECORDS_TEMPLATE, records=school_records)
     except Exception as e:
         error_text = traceback.format_exc()
         print("RECORDS ERROR:")
+        print(error_text)
+        return f"<pre>Error occurred:\n{error_text}</pre>"
+
+
+@app.route('/upload-records')
+def upload_records():
+    if 'user' not in session:
+        return redirect('/')
+    try:
+        selected_project = request.args.get('project')
+        uploads = get_upload_records(selected_project)
+        project_name = selected_project or "All Projects"
+        project = get_project_master(selected_project) if selected_project else None
+        if project:
+            project_name = project.get('project_name') or project_name
+        return render_template_string(UPLOAD_RECORDS_TEMPLATE, records=uploads, project_name=project_name)
+    except Exception as e:
+        error_text = traceback.format_exc()
+        print("UPLOAD RECORDS ERROR:")
         print(error_text)
         return f"<pre>Error occurred:\n{error_text}</pre>"
 
