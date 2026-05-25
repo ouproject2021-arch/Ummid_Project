@@ -383,6 +383,7 @@ HEADER_HTML = """
     <div>
         <a href="/menu">Menu</a>
         <a href="/projects">Projects</a>
+        <a href="/project-data-entry">Project Data Entry</a>
         <a href="/records">Records</a>
         <a href="/export">Download Excel</a>
         <a href="/oauth-status">OAuth Status</a>
@@ -419,8 +420,9 @@ MENU_TEMPLATE = """
 </style>
 </head><body>
 """ + HEADER_HTML + """
-<div class="container"><div class="menu-card" style="max-width:1100px;"><h2>Ummid Foundation Project Dashboard</h2>
-<div class="page-note">Select a project page below to maintain project master information and continue data entry/upload work.</div>
+<div class="container"><div class="menu-card" style="max-width:1100px;"><h2>Ummid Foundation Main Menu</h2>
+<div class="page-note">Select a project page below to continue project work. Use Project Data Entry from Menu to maintain Project ID, Company Code, Company Name, FY and Project Cost.</div>
+<a class="menu-button secondary" style="max-width:320px;margin:16px auto;" href="/project-data-entry">Project Data Entry</a>
 <div class="project-grid">
 {% for project in projects %}
 <a class="project-card" href="/project/{{ project.slug }}">
@@ -457,6 +459,29 @@ PROJECTS_TEMPLATE = """
 </div></div></body></html>
 """
 
+PROJECT_INFO_TEMPLATE = """
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+""" + BASE_STYLE + """
+</head><body>
+""" + HEADER_HTML + """
+<div class="container"><div class="form-card" style="max-width:1100px;"><h2>Project Data Entry</h2>
+<div class="page-note">Maintain common project details here. Later this page can be restricted for Admin users only.</div>
+<form method="post"><div class="form-grid">
+<div class="form-group"><label>Project ID</label><input name="project_id" value="{{ edit_record.project_id if edit_record else '' }}" required placeholder="Example: EDU-2025-26-01"></div>
+<div class="form-group"><label>Company Code</label><input name="company_code" value="{{ edit_record.company_code if edit_record else '' }}" required placeholder="Example: CUBIC01"></div>
+<div class="form-group"><label>Company Name</label><input name="company_name" value="{{ edit_record.company_name if edit_record else '' }}" required></div>
+<div class="form-group"><label>Project Cost</label><input name="project_cost" value="{{ edit_record.project_cost if edit_record else '' }}" placeholder="Example: 500000"></div>
+<div class="form-group"><label>FY</label><input name="fy" value="{{ edit_record.fy if edit_record else '' }}" placeholder="FY 2025-26"></div>
+</div><button type="submit">Save Project Details</button></form>
+{% if success %}<p class="success">Project details saved successfully ✅</p>{% endif %}
+<br>
+<div class="toolbar"><input id="recordSearch" class="search-box" onkeyup="filterRecordsTable()" placeholder="Search Project ID, Company Code, Company Name..."><span class="badge">Total Records: {{ records|length }}</span></div>
+<div class="table-wrap"><table id="recordsTable"><thead><tr><th>ID</th><th>Project ID</th><th>Company Code</th><th>Company Name</th><th>Project Cost</th><th>FY</th><th>Created</th></tr></thead><tbody>
+{% for row in records %}<tr><td>{{ loop.index }}</td><td>{{ row.project_id }}</td><td>{{ row.company_code }}</td><td>{{ row.company_name }}</td><td>{{ row.project_cost }}</td><td>{{ row.fy }}</td><td>{{ row.created_at }}</td></tr>{% endfor %}
+</tbody></table></div>
+</div></div></body></html>
+"""
+
 PROJECT_MASTER_TEMPLATE = """
 <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 """ + BASE_STYLE + """
@@ -467,6 +492,27 @@ PROJECT_MASTER_TEMPLATE = """
 .summary-item strong{display:block;color:#1b5e20;font-size:20px;}
 @media(max-width:800px){.action-row,.summary-box{grid-template-columns:1fr;}}
 </style>
+<script>
+function fetchProjectInfoById(){
+    var projectIdInput = document.getElementById('project_id');
+    if (!projectIdInput || !projectIdInput.value.trim()) return;
+    fetch('/get-project-info/' + encodeURIComponent(projectIdInput.value.trim()))
+        .then(function(response){ return response.json(); })
+        .then(function(data){
+            if(data.found){
+                var companyCode = document.getElementById('company_code');
+                var companyName = document.getElementById('company_name');
+                var fy = document.getElementById('fy');
+                var projectCost = document.getElementById('project_cost');
+                if(companyCode) companyCode.value = data.company_code || '';
+                if(companyName) companyName.value = data.company_name || '';
+                if(fy) fy.value = data.fy || '';
+                if(projectCost) projectCost.value = data.project_cost || '';
+            }
+        })
+        .catch(function(error){ console.log('Project lookup failed:', error); });
+}
+</script>
 </head><body>
 """ + HEADER_HTML + """
 <div class="container"><div class="form-card" style="max-width:1000px;"><h2>{{ project.project_name }}</h2>
@@ -479,12 +525,12 @@ PROJECT_MASTER_TEMPLATE = """
 <form method="post"><div class="form-grid">
 <input type="hidden" name="slug" value="{{ project.slug }}">
 <div class="form-group"><label>Project Area</label><input name="project_name" value="{{ project.project_name }}" readonly></div>
-<div class="form-group"><label>Project ID</label><input name="project_id" value="{{ project.project_id or '' }}" placeholder="Example: EDU-2025-26-01" required></div>
+<div class="form-group"><label>Project ID</label><input id="project_id" name="project_id" value="{{ project.project_id or '' }}" placeholder="Example: EDU-2025-26-01" required onblur="fetchProjectInfoById()"></div>
 <div class="form-group"><label>Project Title</label><input name="project_title" value="{{ project.project_title or '' }}" placeholder="Enter project title" required></div>
-{% if project.slug != 'education' %}<div class="form-group"><label>Company Code</label><input name="company_code" value="{{ project.company_code or '' }}" placeholder="Example: CUBIC01" required></div>{% endif %}
-<div class="form-group"><label>Company Name</label><input name="company_name" value="{{ project.company_name or '' }}" placeholder="CSR Partner / Company Name"></div>
-<div class="form-group"><label>FY</label><input name="fy" value="{{ project.fy or '' }}" placeholder="FY 2025-26"></div>
-<div class="form-group"><label>Project Cost</label><input name="project_cost" value="{{ project.project_cost or '' }}" placeholder="Example: 500000"></div>
+<div class="form-group"><label>Company Code</label><input id="company_code" name="company_code" value="{{ project.company_code or '' }}" placeholder="Example: CUBIC01" required></div>
+<div class="form-group"><label>Company Name</label><input id="company_name" name="company_name" value="{{ project.company_name or '' }}" placeholder="CSR Partner / Company Name"></div>
+<div class="form-group"><label>FY</label><input id="fy" name="fy" value="{{ project.fy or '' }}" placeholder="FY 2025-26"></div>
+<div class="form-group"><label>Project Cost</label><input id="project_cost" name="project_cost" value="{{ project.project_cost or '' }}" placeholder="Example: 500000"></div>
 <div class="form-group"><label>Status</label><select name="status">
 <option {% if project.status == 'Planning' %}selected{% endif %}>Planning</option>
 <option {% if project.status == 'In Progress' %}selected{% endif %}>In Progress</option>
@@ -510,6 +556,24 @@ function calculateTotal(){
     var boys=parseInt(document.getElementById('boys').value)||0;
     var girls=parseInt(document.getElementById('girls').value)||0;
     document.getElementById('total').value=boys+girls;
+}
+
+function fetchProjectInfoForEducation(){
+    var projectIdInput = document.getElementById('project_id');
+    if (!projectIdInput || !projectIdInput.value.trim()) return;
+    fetch('/get-project-info/' + encodeURIComponent(projectIdInput.value.trim()))
+        .then(function(response){ return response.json(); })
+        .then(function(data){
+            if(data.found){
+                var companyCode = document.getElementById('company_code');
+                var companyName = document.getElementById('company_name');
+                var fy = document.getElementById('fy');
+                if(companyCode) companyCode.value = data.company_code || '';
+                if(companyName) companyName.value = data.company_name || '';
+                if(fy) fy.value = data.fy || '';
+            }
+        })
+        .catch(function(error){ console.log('Project lookup failed:', error); });
 }
 
 function validateSchoolCode(){
@@ -549,8 +613,9 @@ function validateSchoolCode(){
 <div class="container"><div class="form-card"><h2>School Data Entry</h2><form method="post"><div class="form-grid">
 <input type="hidden" name="project_slug" value="education">
 <div class="form-group"><label>Project Area</label><input value="Education" readonly></div>
-<div class="form-group"><label>Project ID</label><input name="project_id" value="{{ project_master.project_id or '' }}" readonly></div>
+<div class="form-group"><label>Project ID</label><input id="project_id" name="project_id" value="{{ project_master.project_id or '' }}" required onblur="fetchProjectInfoForEducation()"></div>
 <div class="form-group full"><label>Project Title</label><input value="{{ project_master.project_title or '' }}" readonly></div>
+<div class="form-group"><label>Company Code</label><input id="company_code" name="company_code" value="{{ project_master.company_code or '' }}" required></div>
 <div class="form-group"><label>UDISC Number</label><input name="udisc" required></div>
 <div class="form-group"><label>School Code</label><input id="school_code" name="school_code" required onblur="validateSchoolCode()"></div>
 <div class="form-group"><label>School_Name</label><input name="school_name" required></div>
@@ -559,8 +624,8 @@ function validateSchoolCode(){
 <div class="form-group"><label>Girls</label><input id="girls" name="girls" onkeyup="calculateTotal()"></div>
 <div class="form-group"><label>Boys</label><input id="boys" name="boys" onkeyup="calculateTotal()"></div>
 <div class="form-group"><label>Total Students</label><input id="total" name="total" readonly></div>
-<div class="form-group"><label>Company Name</label><input name="company"></div>
-<div class="form-group"><label>FY</label><input name="fy"></div>
+<div class="form-group"><label>Company Name</label><input id="company_name" name="company" value="{{ project_master.company_name or '' }}"></div>
+<div class="form-group"><label>FY</label><input id="fy" name="fy" value="{{ project_master.fy or '' }}"></div>
 <div class="form-group"><label>Phase</label><select name="phase"><option>1st Phase</option><option>2nd Phase</option><option>3rd Phase</option><option>4th Phase</option></select></div>
 <div class="form-group full"><label>Remarks</label><textarea name="remarks"></textarea></div>
 </div><button id="save_school_button" type="submit">Save School Data</button></form>{% if success %}<p class="success">School data saved to Supabase ✅</p>{% endif %}</div></div></body></html>
@@ -598,6 +663,24 @@ function fetchSchoolByUdisc() {
             msg.style.color = "#b71c1c";
         });
 }
+
+function fetchProjectInfoForUpload(){
+    var projectIdInput = document.getElementById('project_id');
+    if (!projectIdInput || !projectIdInput.value.trim()) return;
+    fetch('/get-project-info/' + encodeURIComponent(projectIdInput.value.trim()))
+        .then(function(response){ return response.json(); })
+        .then(function(data){
+            if(data.found){
+                var companyCode = document.getElementById('company_code');
+                var companyName = document.getElementById('company_name');
+                var fy = document.getElementById('fy');
+                if(companyCode) companyCode.value = data.company_code || '';
+                if(companyName) companyName.value = data.company_name || '';
+                if(fy) fy.value = data.fy || '';
+            }
+        })
+        .catch(function(error){ console.log('Project lookup failed:', error); });
+}
 </script>
 </head><body>
 """ + HEADER_HTML + """
@@ -607,7 +690,10 @@ function fetchSchoolByUdisc() {
 <form method="post" enctype="multipart/form-data"><div class="form-grid">
 <input type="hidden" name="project_slug" value="education">
 <div class="form-group"><label>Project Area</label><input value="Education" readonly></div>
-<div class="form-group"><label>Project ID</label><input name="project_id" value="{{ project.project_id or '' }}" readonly required></div>
+<div class="form-group"><label>Project ID</label><input id="project_id" name="project_id" value="{{ project.project_id or '' }}" required onblur="fetchProjectInfoForUpload()"></div>
+<div class="form-group"><label>Company Code</label><input id="company_code" name="company_code" value="{{ project.company_code or '' }}" readonly></div>
+<div class="form-group"><label>Company Name</label><input id="company_name" value="{{ project.company_name or '' }}" readonly></div>
+<div class="form-group"><label>FY</label><input id="fy" value="{{ project.fy or '' }}" readonly></div>
 <div class="form-group"><label>UDISC Number</label><input name="udisc" id="udisc" required onblur="fetchSchoolByUdisc()"></div>
 <div class="form-group"><label>School Code</label><input name="school_code" id="school_code" readonly required></div>
 <div class="form-group full"><p id="school_lookup_message" style="margin:0; color:#1b5e20; font-weight:bold;"></p></div>
@@ -622,9 +708,11 @@ function fetchSchoolByUdisc() {
 <form method="post" enctype="multipart/form-data"><div class="form-grid">
 <input type="hidden" name="project_slug" value="{{ project.slug }}">
 <div class="form-group"><label>Project Area</label><input value="{{ project.project_name }}" readonly></div>
-<div class="form-group"><label>Project ID</label><input name="project_id" value="{{ project.project_id or '' }}" readonly required></div>
+<div class="form-group"><label>Project ID</label><input id="project_id" name="project_id" value="{{ project.project_id or '' }}" required onblur="fetchProjectInfoForUpload()"></div>
 <div class="form-group"><label>Project Title</label><input value="{{ project.project_title or '' }}" readonly></div>
-<div class="form-group"><label>Company Code</label><input name="company_code" value="{{ project.company_code or '' }}" readonly required></div>
+<div class="form-group"><label>Company Code</label><input id="company_code" name="company_code" value="{{ project.company_code or '' }}" readonly required></div>
+<div class="form-group"><label>Company Name</label><input id="company_name" value="{{ project.company_name or '' }}" readonly></div>
+<div class="form-group"><label>FY</label><input id="fy" value="{{ project.fy or '' }}" readonly></div>
 <div class="form-group full"><label>Upload Photos / Files</label><input type="file" name="project_files" accept="image/png,image/jpeg,application/pdf,.doc,.docx,.xls,.xlsx" multiple required></div>
 </div><button type="submit">Upload Files</button></form>
 {% endif %}
@@ -638,9 +726,9 @@ RECORDS_TEMPLATE = """
 """ + HEADER_HTML + """
 <div class="container"><div class="form-card" style="max-width:1200px;"><h2>Saved School Records</h2><div class="toolbar"><input id="recordSearch" class="search-box" onkeyup="filterRecordsTable()" placeholder="Search by UDISC, School Code, Name, FY..."><span class="badge">Total Records: {{ records|length }}</span></div><div class="table-wrap"><table id="recordsTable">
 <thead><tr><th>ID</th><th>Project</th><th>UDISC</th><th>School Code</th>
-<th>School_Name</th><th>Location</th><th>Year</th><th>Girls</th><th>Boys</th><th>Total</th><th>Company</th><th>FY</th><th>Phase</th><th>Remarks</th><th>Created</th><th>Google Drive Folder</th><th>Action</th></tr></thead>
+<th>School_Name</th><th>Location</th><th>Year</th><th>Girls</th><th>Boys</th><th>Total</th><th>Company</th><th>Company Code</th><th>FY</th><th>Phase</th><th>Remarks</th><th>Created</th><th>Google Drive Folder</th><th>Action</th></tr></thead>
 <tbody>{% for row in records %}<tr><td>{{ loop.index }}</td><td>{{ row.project_slug or "education" }}</td><td>{{ row.udisc_number }}</td><td>{{ row.school_code }}</td>
-<td>{{ row.school_name }}</td><td>{{ row.location }}</td><td>{{ row.year }}</td><td>{{ row.girls }}</td><td>{{ row.boys }}</td><td>{{ row.total_students }}</td><td>{{ row.company_name }}</td><td>{{ row.fy }}</td><td>{{ row.phase }}</td><td>{{ row.remarks }}</td><td>{{ row.created_at }}</td>
+<td>{{ row.school_name }}</td><td>{{ row.location }}</td><td>{{ row.year }}</td><td>{{ row.girls }}</td><td>{{ row.boys }}</td><td>{{ row.total_students }}</td><td>{{ row.company_name }}</td><td>{{ row.company_code or "" }}</td><td>{{ row.fy }}</td><td>{{ row.phase }}</td><td>{{ row.remarks }}</td><td>{{ row.created_at }}</td>
 <td>
 {% if row.drive_folder_link %}
 <a class="action-link edit-link" href="{{ row.drive_folder_link }}" target="_blank">Open Folder</a>
@@ -791,10 +879,23 @@ def init_db():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS project_info (
+            id SERIAL PRIMARY KEY,
+            project_id TEXT UNIQUE NOT NULL,
+            company_code TEXT NOT NULL,
+            company_name TEXT,
+            project_cost NUMERIC DEFAULT 0,
+            fy TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
 
     cur.execute("ALTER TABLE school_records ADD COLUMN IF NOT EXISTS school_code TEXT")
     cur.execute("ALTER TABLE school_records ADD COLUMN IF NOT EXISTS school_name TEXT")
     cur.execute("ALTER TABLE school_records ADD COLUMN IF NOT EXISTS project_slug TEXT")
+    cur.execute("ALTER TABLE school_records ADD COLUMN IF NOT EXISTS company_code TEXT")
     cur.execute("ALTER TABLE image_uploads ADD COLUMN IF NOT EXISTS school_code TEXT")
     cur.execute("ALTER TABLE image_uploads ADD COLUMN IF NOT EXISTS school_name TEXT")
     cur.execute("ALTER TABLE image_uploads ADD COLUMN IF NOT EXISTS project_slug TEXT")
@@ -821,12 +922,12 @@ def save_school_to_db(data):
     cur.execute("""
         INSERT INTO school_records (
             udisc_number, school_code, school_name, location, year, girls, boys, total_students,
-            company_name, fy, phase, remarks, project_slug
-        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            company_name, fy, phase, remarks, project_slug, company_code
+        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
     """, (
         data["UDISC Number"], data["School Code"], data["School_Name"], data["Location"], data["Year"],
         data["Girls"], data["Boys"], data["Total Students"], data["Company Name"],
-        data["FY"], data["Phase"], data["Remarks"], data.get("Project Slug", "education")
+        data["FY"], data["Phase"], data["Remarks"], data.get("Project Slug", "education"), data.get("Company Code", "")
     ))
     conn.commit()
     cur.close()
@@ -852,6 +953,61 @@ def save_image_to_db(data):
     conn.close()
 
 
+
+
+def upsert_project_info(data):
+    init_db()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO project_info (project_id, company_code, company_name, project_cost, fy)
+        VALUES (%s,%s,%s,%s,%s)
+        ON CONFLICT (project_id) DO UPDATE SET
+            company_code = EXCLUDED.company_code,
+            company_name = EXCLUDED.company_name,
+            project_cost = EXCLUDED.project_cost,
+            fy = EXCLUDED.fy,
+            updated_at = CURRENT_TIMESTAMP
+    """, (
+        data.get("project_id", "").strip(),
+        data.get("company_code", "").strip(),
+        data.get("company_name", "").strip(),
+        data.get("project_cost") or 0,
+        data.get("fy", "").strip()
+    ))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def get_project_info_by_id(project_id):
+    init_db()
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT id, project_id, company_code, company_name, project_cost, fy, created_at, updated_at
+        FROM project_info
+        WHERE project_id = %s
+    """, (project_id,))
+    record = cur.fetchone()
+    cur.close()
+    conn.close()
+    return record
+
+
+def get_all_project_info():
+    init_db()
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT id, project_id, company_code, company_name, project_cost, fy, created_at, updated_at
+        FROM project_info
+        ORDER BY id DESC
+    """)
+    records = cur.fetchall()
+    cur.close()
+    conn.close()
+    return records
 
 
 def get_project_master(slug):
@@ -1043,7 +1199,7 @@ def get_school_records(project_slug=None):
     if project_slug:
         cur.execute("""
             SELECT id, udisc_number, school_code, school_name, location, year, girls, boys,
-                   total_students, company_name, fy, phase, remarks, project_slug, created_at
+                   total_students, company_name, company_code, fy, phase, remarks, project_slug, created_at
             FROM school_records
             WHERE project_slug = %s
             ORDER BY id DESC
@@ -1051,7 +1207,7 @@ def get_school_records(project_slug=None):
     else:
         cur.execute("""
             SELECT id, udisc_number, school_code, school_name, location, year, girls, boys,
-                   total_students, company_name, fy, phase, remarks, project_slug, created_at
+                   total_students, company_name, company_code, fy, phase, remarks, project_slug, created_at
             FROM school_records
             ORDER BY id DESC
         """)
@@ -1410,6 +1566,59 @@ def menu():
     return render_template_string(MENU_TEMPLATE, projects=PROJECT_MASTER_LIST)
 
 
+@app.route('/project-data-entry', methods=['GET', 'POST'])
+def project_data_entry():
+    if 'user' not in session:
+        return redirect('/')
+    success = False
+    try:
+        init_db()
+        if request.method == 'POST':
+            project_id = request.form.get('project_id', '').strip()
+            company_code = request.form.get('company_code', '').strip()
+            if not project_id:
+                return "Project ID is required"
+            if not company_code:
+                return "Company Code is required"
+            upsert_project_info({
+                "project_id": project_id,
+                "company_code": company_code,
+                "company_name": request.form.get('company_name', ''),
+                "project_cost": request.form.get('project_cost', 0),
+                "fy": request.form.get('fy', '')
+            })
+            success = True
+        records = get_all_project_info()
+        return render_template_string(PROJECT_INFO_TEMPLATE, records=records, success=success, edit_record=None)
+    except Exception as e:
+        error_text = traceback.format_exc()
+        print("PROJECT DATA ENTRY ERROR:")
+        print(error_text)
+        return "<pre>Error occurred:\n" + error_text + "</pre>"
+
+
+@app.route('/get-project-info/<path:project_id>')
+def get_project_info_route(project_id):
+    if 'user' not in session:
+        return {"found": False, "error": "Not logged in"}
+    try:
+        record = get_project_info_by_id(project_id.strip())
+        if not record:
+            return {"found": False}
+        return {
+            "found": True,
+            "project_id": record.get("project_id") or "",
+            "company_code": record.get("company_code") or "",
+            "company_name": record.get("company_name") or "",
+            "project_cost": str(record.get("project_cost") or ""),
+            "fy": record.get("fy") or ""
+        }
+    except Exception as e:
+        print("PROJECT INFO LOOKUP ERROR:")
+        print(traceback.format_exc())
+        return {"found": False, "error": str(e)}
+
+
 @app.route('/projects')
 def projects():
     if 'user' not in session:
@@ -1439,6 +1648,13 @@ def project_master(slug):
                 "fy": request.form.get("fy", ""),
                 "project_cost": request.form.get("project_cost", 0),
                 "status": request.form.get("status", "Planning")
+            })
+            upsert_project_info({
+                "project_id": request.form.get("project_id", ""),
+                "company_code": request.form.get("company_code", ""),
+                "company_name": request.form.get("company_name", ""),
+                "project_cost": request.form.get("project_cost", 0),
+                "fy": request.form.get("fy", "")
             })
             success = True
 
@@ -1493,6 +1709,7 @@ def school_entry():
                 "Boys": boys,
                 "Total Students": boys + girls,
                 "Company Name": request.form.get('company', ''),
+                "Company Code": request.form.get('company_code', ''),
                 "FY": request.form.get('fy', ''),
                 "Phase": request.form.get('phase', ''),
                 "Remarks": request.form.get('remarks', ''),
@@ -1572,6 +1789,7 @@ def image_upload():
             upload_count = 0
             if selected_project == 'education':
                 project_id = (request.form.get('project_id') or project.get('project_id') or '').strip()
+                project_info = get_project_info_by_id(project_id) if project_id else None
                 udisc_number = request.form.get('udisc', '').strip()
 
                 if not project_id:
@@ -1635,7 +1853,8 @@ def image_upload():
                             })
             else:
                 project_id = (request.form.get('project_id') or project.get('project_id') or '').strip()
-                company_code = (request.form.get('company_code') or project.get('company_code') or '').strip()
+                project_info = get_project_info_by_id(project_id) if project_id else None
+                company_code = (request.form.get('company_code') or (project_info.get('company_code') if project_info else '') or project.get('company_code') or '').strip()
                 if not project_id:
                     return "Project ID is required in project master"
                 if not company_code:
@@ -1817,6 +2036,7 @@ def export():
                 "boys": "Boys",
                 "total_students": "Total",
                 "company_name": "Company",
+                "company_code": "Company Code",
                 "fy": "FY",
                 "phase": "Phase",
                 "remarks": "Remarks",
@@ -1841,6 +2061,7 @@ def export():
                 "Boys",
                 "Total",
                 "Company",
+                "Company Code",
                 "FY",
                 "Phase",
                 "Remarks",
