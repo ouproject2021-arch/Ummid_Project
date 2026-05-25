@@ -1180,73 +1180,46 @@ def save_token(creds):
     return token_data
 
 
-def get_token_candidates():
-    """Return all possible token sources. This prevents one bad/expired Render env token from blocking a good DB token."""
-    candidates = []
+def load_token():
+    # Priority 1: Render environment variable, if already configured.
+    token_data = normalize_token_json(os.environ.get("GOOGLE_TOKEN_JSON"))
+    if token_data:
+        return token_data
 
-    env_token = normalize_token_json(os.environ.get("GOOGLE_TOKEN_JSON"))
-    if env_token:
-        candidates.append(("Render GOOGLE_TOKEN_JSON", env_token))
+    # Priority 2: Supabase/PostgreSQL token saved after /authorize.
+    token_data = load_token_from_db()
+    if token_data:
+        return token_data
 
-    db_token = load_token_from_db()
-    if db_token:
-        candidates.append(("Supabase/PostgreSQL", db_token))
-
+    # Priority 3: Local token file, useful while testing on local machine.
     if os.path.exists(TOKEN_FILE):
         try:
             with open(TOKEN_FILE, "r") as token_file:
-                local_token = json.load(token_file)
-                if local_token:
-                    candidates.append(("local token.json", local_token))
+                return json.load(token_file)
         except Exception as e:
             print("❌ LOCAL TOKEN FILE READ ERROR:", repr(e))
-
-    return candidates
-
-
-def load_token():
-    candidates = get_token_candidates()
-    if candidates:
-        return candidates[0][1]
     return None
 
 
 def get_drive_service():
-    candidates = get_token_candidates()
-
-    if not candidates:
-        print("❌ Google OAuth token not found. Open /authorize first.")
+    try:
+        token_data = load_token()
+        if not token_data:
+            print("❌ Google OAuth token not found. Open /authorize first.")
+            return None
+        creds = Credentials.from_authorized_user_info(token_data, SCOPES)
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+            save_token(creds)
+        if not creds or not creds.valid:
+            print("❌ Google OAuth credentials are invalid. Open /authorize again.")
+            return None
+        service = build('drive', 'v3', credentials=creds, cache_discovery=False)
+        print("✅ Google Drive OAuth Connected Successfully")
+        return service
+    except Exception as e:
+        print("❌ GOOGLE DRIVE OAUTH CONNECTION ERROR:", str(e))
         return None
-
-    last_error = None
-
-    for source_name, token_data in candidates:
-        try:
-            print(f"🔎 Trying Google OAuth token from: {source_name}")
-            creds = Credentials.from_authorized_user_info(token_data, SCOPES)
-
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-                save_token(creds)
-
-            if not creds or not creds.valid:
-                print(f"❌ Google OAuth credentials are invalid from: {source_name}")
-                continue
-
-            service = build('drive', 'v3', credentials=creds, cache_discovery=False)
-            # Test the Drive connection immediately so /oauth-status is accurate.
-            service.files().get(fileId=PARENT_FOLDER_ID, fields='id,name', supportsAllDrives=True).execute()
-            print("✅ Google Drive OAuth Connected Successfully")
-            return service
-
-        except Exception as e:
-            last_error = e
-            print(f"❌ GOOGLE DRIVE OAUTH CONNECTION ERROR from {source_name}:", repr(e))
-            continue
-
-    if last_error:
-        print("❌ All Google OAuth token sources failed. Re-authorize from /authorize.")
-    return None
 
 
 def escape_drive_query(value):
@@ -1447,20 +1420,29 @@ def authorize():
         client_secrets_json = os.environ.get("GOOGLE_CLIENT_SECRETS")
         if not client_secrets_json:
             return "❌ GOOGLE_CLIENT_SECRETS environment variable not found"
+
         client_config = json.loads(client_secrets_json)
         redirect_uri = os.environ.get("GOOGLE_REDIRECT_URI", url_for('oauth2callback', _external=True))
+
+        # IMPORTANT:
+        # Do not use PKCE/code_verifier here. On Render, the session can be lost during
+        # the Google redirect/callback flow, which causes: invalid_grant Missing code verifier.
+        # This server-side OAuth flow uses the client secret from GOOGLE_CLIENT_SECRETS instead.
         flow = Flow.from_client_config(
             client_config,
             scopes=SCOPES,
             redirect_uri=redirect_uri
         )
+
         authorization_url, state = flow.authorization_url(
             access_type='offline',
             include_granted_scopes='true',
             prompt='consent'
         )
+
         session['state'] = state
         return redirect(authorization_url)
+
     except Exception as e:
         return f"❌ OAuth Authorization Error: {str(e)}"
 
@@ -1472,19 +1454,26 @@ def oauth2callback():
         client_secrets_json = os.environ.get("GOOGLE_CLIENT_SECRETS")
         if not client_secrets_json:
             return "❌ GOOGLE_CLIENT_SECRETS environment variable not found"
+
         client_config = json.loads(client_secrets_json)
         redirect_uri = os.environ.get("GOOGLE_REDIRECT_URI", url_for('oauth2callback', _external=True))
+
+        # Callback is intentionally not dependent on session code_verifier, so the
+        # authorization still completes even if Render/browser loses Flask session data.
         flow = Flow.from_client_config(
             client_config,
             scopes=SCOPES,
             state=session.get('state'),
             redirect_uri=redirect_uri
         )
+
         flow.fetch_token(authorization_response=request.url)
         creds = flow.credentials
         token_data = save_token(creds)
         drive_service = get_drive_service()
+
         return render_template_string(OAUTH_CALLBACK_TEMPLATE, token_json=json.dumps(token_data))
+
     except Exception as e:
         return f"❌ OAuth Callback Error: {str(e)}"
 
@@ -1519,8 +1508,10 @@ OAUTH_CALLBACK_TEMPLATE = """
 <h2>Google Drive OAuth Connected</h2>
 <p class="success">✅ Google Drive OAuth connected successfully.</p>
 <div class="page-note" style="text-align:left;">
-Your token has been saved securely in Supabase/PostgreSQL. You do not need to copy any token into Render.
+Your token has been saved securely in Supabase/PostgreSQL. You do not need to copy it into Render unless you want to keep GOOGLE_TOKEN_JSON as a backup.
 </div>
+<label>GOOGLE_TOKEN_JSON</label>
+<textarea readonly style="width:100%;height:260px;margin-top:10px;font-family:monospace;">{{ token_json }}</textarea>
 <a class="menu-button" href="/oauth-status">Check OAuth Status</a>
 <a class="menu-button secondary" href="/menu">Back to Menu</a>
 </div></div></body></html>
@@ -1529,7 +1520,6 @@ Your token has been saved securely in Supabase/PostgreSQL. You do not need to co
 @app.route('/oauth-status')
 def oauth_status():
     global drive_service
-    drive_service = None
     drive_service = get_drive_service()
     connected = drive_service is not None
     return render_template_string(OAUTH_STATUS_TEMPLATE, connected=connected)
