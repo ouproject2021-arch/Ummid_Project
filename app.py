@@ -518,8 +518,8 @@ PROJECT_INFO_TEMPLATE = """
 </div><button type="submit">Save Project Data</button></form>
 {% if success %}<p class="success">Project data saved successfully ✅</p>{% endif %}
 <br><h2 style="font-size:22px;">Saved Project Data</h2>
-<div class="table-wrap"><table id="recordsTable"><thead><tr><th>ID</th><th>Project ID</th><th>Company Code</th><th>Company Name</th><th>Project Cost</th><th>FY</th><th>Updated</th></tr></thead>
-<tbody>{% for row in records %}<tr><td>{{ loop.index }}</td><td>{{ row.project_id }}</td><td>{{ row.company_code }}</td><td>{{ row.company_name }}</td><td>{{ row.project_cost }}</td><td>{{ row.fy }}</td><td>{{ row.updated_at }}</td></tr>{% endfor %}</tbody></table></div>
+<div class="table-wrap"><table id="recordsTable"><thead><tr><th>ID</th><th>Project ID</th><th>Company Code</th><th>Company Name</th><th>Project Cost</th><th>FY</th><th>Updated</th><th>Action</th></tr></thead>
+<tbody>{% for row in records %}<tr><td>{{ loop.index }}</td><td>{{ row.project_id }}</td><td>{{ row.company_code }}</td><td>{{ row.company_name }}</td><td>{{ row.project_cost }}</td><td>{{ row.fy }}</td><td>{{ row.updated_at }}</td><td><a class="action-link edit-link" href="/edit-project-info/{{ row.id }}">Edit</a><form class="inline-form" method="POST" action="/delete-project-info/{{ row.id }}" onsubmit="return confirm('Delete this project data entry?');"><button class="inline-button" type="submit">Delete</button></form></td></tr>{% endfor %}</tbody></table></div>
 </div></div></body></html>
 """
 
@@ -733,11 +733,46 @@ UPLOAD_RECORDS_TEMPLATE = """
 </head><body>
 """ + HEADER_HTML + """
 <div class="container"><div class="form-card" style="max-width:1200px;"><h2>{{ project_name }} Upload Records</h2><div class="toolbar"><input id="recordSearch" class="search-box" onkeyup="filterRecordsTable()" placeholder="Search by Project ID, Company Code, File Name..."><span class="badge">Total Uploads: {{ records|length }}</span></div><div class="table-wrap"><table id="recordsTable">
-<thead><tr><th>ID</th><th>Project</th><th>Project ID</th><th>Company Code / School Code</th><th>Category</th><th>File Name</th><th>Uploaded</th><th>Google Drive File</th></tr></thead>
-<tbody>{% for row in records %}<tr><td>{{ loop.index }}</td><td>{{ row.project_slug }}</td><td>{{ row.udisc_number }}</td><td>{{ row.school_code }}</td><td>{{ row.category }}</td><td>{{ row.original_filename }}</td><td>{{ row.uploaded_at }}</td><td>{% if row.drive_web_link %}<a class="action-link edit-link" href="{{ row.drive_web_link }}" target="_blank">Open File</a>{% else %}N/A{% endif %}</td></tr>{% endfor %}</tbody>
+<thead><tr><th>ID</th><th>Project</th><th>Project ID</th><th>Company Code / School Code</th><th>Category</th><th>File Name</th><th>Uploaded</th><th>Google Drive File</th><th>Action</th></tr></thead>
+<tbody>{% for row in records %}<tr><td>{{ loop.index }}</td><td>{{ row.project_slug }}</td><td>{{ row.udisc_number }}</td><td>{{ row.school_code }}</td><td>{{ row.category }}</td><td>{{ row.original_filename }}</td><td>{{ row.uploaded_at }}</td><td>{% if row.drive_web_link %}<a class="action-link edit-link" href="{{ row.drive_web_link }}" target="_blank">Open File</a>{% else %}N/A{% endif %}</td><td><a class="action-link edit-link" href="/edit-upload-record/{{ row.id }}">Edit</a><form class="inline-form" method="POST" action="/delete-upload-record/{{ row.id }}" onsubmit="return confirm('Delete this upload record? This will remove the database entry only.');"><button class="inline-button" type="submit">Delete</button></form></td></tr>{% endfor %}</tbody>
 </table></div></div></div></body></html>
 """
 
+
+
+EDIT_PROJECT_INFO_TEMPLATE = """
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+""" + BASE_STYLE + """
+</head><body>
+""" + HEADER_HTML + """
+<div class="container"><div class="form-card"><h2>Edit Project Data Entry</h2>
+<form method="post"><div class="form-grid">
+<div class="form-group"><label>Project ID</label><input name="project_id" value="{{ record.project_id }}" required></div>
+<div class="form-group"><label>Company Code</label><input name="company_code" value="{{ record.company_code }}" required></div>
+<div class="form-group"><label>Company Name</label><input name="company_name" value="{{ record.company_name }}" required></div>
+<div class="form-group"><label>Project Cost</label><input name="project_cost" type="number" step="0.01" value="{{ record.project_cost }}" required></div>
+<div class="form-group"><label>FY</label><input name="fy" value="{{ record.fy }}" required></div>
+</div><button type="submit">Update Project Data</button></form>
+<a class="menu-button secondary" href="/project-data-entry">Back to Project Data Entry</a>
+</div></div></body></html>
+"""
+
+EDIT_UPLOAD_RECORD_TEMPLATE = """
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+""" + BASE_STYLE + """
+</head><body>
+""" + HEADER_HTML + """
+<div class="container"><div class="form-card"><h2>Edit Upload Record</h2>
+<form method="post"><div class="form-grid">
+<div class="form-group"><label>Project Area</label><input name="project_slug" value="{{ record.project_slug }}" readonly></div>
+<div class="form-group"><label>Project ID</label><input name="udisc_number" value="{{ record.udisc_number }}" required></div>
+<div class="form-group"><label>Company Code / School Code</label><input name="school_code" value="{{ record.school_code }}" required></div>
+<div class="form-group"><label>Category</label><input name="category" value="{{ record.category }}" required></div>
+<div class="form-group full"><label>File Name</label><input name="original_filename" value="{{ record.original_filename }}" required></div>
+</div><button type="submit">Update Upload Record</button></form>
+<a class="menu-button secondary" href="/upload-records?project={{ record.project_slug }}">Back to Upload Records</a>
+</div></div></body></html>
+"""
 
 
 EDIT_RECORD_TEMPLATE = """
@@ -1080,6 +1115,58 @@ def get_project_info_records():
     return records
 
 
+
+
+def get_project_info_record_by_id(record_id):
+    init_db()
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT id, project_id, company_code, company_name, project_cost, fy, created_at, updated_at
+        FROM project_info
+        WHERE id = %s
+    """, (record_id,))
+    record = cur.fetchone()
+    cur.close()
+    conn.close()
+    return record
+
+
+def update_project_info_record(record_id, data):
+    init_db()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE project_info
+        SET project_id = %s,
+            company_code = %s,
+            company_name = %s,
+            project_cost = %s,
+            fy = %s,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = %s
+    """, (
+        data.get("project_id", "").strip(),
+        data.get("company_code", "").strip(),
+        data.get("company_name", "").strip(),
+        data.get("project_cost") or 0,
+        data.get("fy", "").strip(),
+        record_id
+    ))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def delete_project_info_record(record_id):
+    init_db()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM project_info WHERE id = %s", (record_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+
 def school_code_exists(school_code, exclude_id=None):
     init_db()
     conn = get_db_connection()
@@ -1233,6 +1320,55 @@ def get_upload_records(project_slug=None):
     conn.close()
     return records
 
+
+
+def get_upload_record_by_id(record_id):
+    init_db()
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT id, udisc_number, school_code, school_name, category, original_filename,
+               drive_file_id, drive_file_name, drive_folder_id, drive_web_link, project_slug, uploaded_at
+        FROM image_uploads
+        WHERE id = %s
+    """, (record_id,))
+    record = cur.fetchone()
+    cur.close()
+    conn.close()
+    return record
+
+
+def update_upload_record(record_id, data):
+    init_db()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE image_uploads
+        SET udisc_number = %s,
+            school_code = %s,
+            category = %s,
+            original_filename = %s
+        WHERE id = %s
+    """, (
+        data.get("udisc_number", "").strip(),
+        data.get("school_code", "").strip(),
+        data.get("category", "").strip(),
+        data.get("original_filename", "").strip(),
+        record_id
+    ))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def delete_upload_record(record_id):
+    init_db()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM image_uploads WHERE id = %s", (record_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
 
 
 # ========================
@@ -1819,6 +1955,48 @@ def project_data_entry():
         return f"<pre>Error occurred:\n{error_text}</pre>"
 
 
+@app.route('/edit-project-info/<int:record_id>', methods=['GET', 'POST'])
+def edit_project_info(record_id):
+    if 'user' not in session:
+        return redirect('/')
+    try:
+        record = get_project_info_record_by_id(record_id)
+        if not record:
+            return "Project data entry not found"
+        if request.method == 'POST':
+            project_id = request.form.get('project_id', '').strip()
+            if not project_id:
+                return "Project ID is required"
+            update_project_info_record(record_id, {
+                "project_id": project_id,
+                "company_code": request.form.get('company_code', ''),
+                "company_name": request.form.get('company_name', ''),
+                "project_cost": request.form.get('project_cost', 0),
+                "fy": request.form.get('fy', '')
+            })
+            return redirect('/project-data-entry')
+        return render_template_string(EDIT_PROJECT_INFO_TEMPLATE, record=record)
+    except Exception as e:
+        error_text = traceback.format_exc()
+        print("EDIT PROJECT INFO ERROR:")
+        print(error_text)
+        return f"<pre>Error occurred:\n{error_text}</pre>"
+
+
+@app.route('/delete-project-info/<int:record_id>', methods=['POST'])
+def delete_project_info(record_id):
+    if 'user' not in session:
+        return redirect('/')
+    try:
+        delete_project_info_record(record_id)
+        return redirect('/project-data-entry')
+    except Exception as e:
+        error_text = traceback.format_exc()
+        print("DELETE PROJECT INFO ERROR:")
+        print(error_text)
+        return f"<pre>Error occurred:\n{error_text}</pre>"
+
+
 @app.route('/get-project-info/<path:project_id>')
 def get_project_info_route(project_id):
     if 'user' not in session:
@@ -2183,6 +2361,46 @@ def upload_records():
     except Exception as e:
         error_text = traceback.format_exc()
         print("UPLOAD RECORDS ERROR:")
+        print(error_text)
+        return f"<pre>Error occurred:\n{error_text}</pre>"
+
+
+@app.route('/edit-upload-record/<int:record_id>', methods=['GET', 'POST'])
+def edit_upload_record(record_id):
+    if 'user' not in session:
+        return redirect('/')
+    try:
+        record = get_upload_record_by_id(record_id)
+        if not record:
+            return "Upload record not found"
+        if request.method == 'POST':
+            update_upload_record(record_id, {
+                "udisc_number": request.form.get('udisc_number', ''),
+                "school_code": request.form.get('school_code', ''),
+                "category": request.form.get('category', ''),
+                "original_filename": request.form.get('original_filename', '')
+            })
+            return redirect('/upload-records?project=' + (record.get('project_slug') or ''))
+        return render_template_string(EDIT_UPLOAD_RECORD_TEMPLATE, record=record)
+    except Exception as e:
+        error_text = traceback.format_exc()
+        print("EDIT UPLOAD RECORD ERROR:")
+        print(error_text)
+        return f"<pre>Error occurred:\n{error_text}</pre>"
+
+
+@app.route('/delete-upload-record/<int:record_id>', methods=['POST'])
+def delete_upload_record_route(record_id):
+    if 'user' not in session:
+        return redirect('/')
+    try:
+        record = get_upload_record_by_id(record_id)
+        project_slug = (record or {}).get('project_slug') or ''
+        delete_upload_record(record_id)
+        return redirect('/upload-records?project=' + project_slug)
+    except Exception as e:
+        error_text = traceback.format_exc()
+        print("DELETE UPLOAD RECORD ERROR:")
         print(error_text)
         return f"<pre>Error occurred:\n{error_text}</pre>"
 
