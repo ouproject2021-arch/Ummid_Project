@@ -876,6 +876,13 @@ def init_db():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS oauth_states (
+            state TEXT PRIMARY KEY,
+            code_verifier TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
 
     cur.execute("ALTER TABLE school_records ADD COLUMN IF NOT EXISTS school_code TEXT")
     cur.execute("ALTER TABLE school_records ADD COLUMN IF NOT EXISTS school_name TEXT")
@@ -1230,6 +1237,54 @@ def get_upload_records(project_slug=None):
     return records
 
 
+
+# ========================
+# OAUTH STATE / PKCE HELPERS
+# ========================
+
+def save_oauth_state(state, code_verifier):
+    """Store Google OAuth PKCE code_verifier outside Flask session so Render redirects do not break authorization."""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS oauth_states (
+            state TEXT PRIMARY KEY,
+            code_verifier TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    cur.execute("""
+        INSERT INTO oauth_states (state, code_verifier)
+        VALUES (%s, %s)
+        ON CONFLICT (state) DO UPDATE SET code_verifier = EXCLUDED.code_verifier, created_at = CURRENT_TIMESTAMP
+    """, (state, code_verifier))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def get_oauth_code_verifier(state):
+    if not state:
+        return None
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT code_verifier FROM oauth_states WHERE state = %s", (state,))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    return row[0] if row else None
+
+
+def delete_oauth_state(state):
+    if not state:
+        return
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM oauth_states WHERE state = %s", (state,))
+    conn.commit()
+    cur.close()
+    conn.close()
+
 # ========================
 # GOOGLE DRIVE OAUTH HELPERS
 # ========================
@@ -1569,14 +1624,14 @@ def authorize():
         client_config = json.loads(client_secrets_json)
         redirect_uri = os.environ.get("GOOGLE_REDIRECT_URI", url_for('oauth2callback', _external=True))
 
-        # IMPORTANT:
-        # Do not use PKCE/code_verifier here. On Render, the session can be lost during
-        # the Google redirect/callback flow, which causes: invalid_grant Missing code verifier.
-        # This server-side OAuth flow uses the client secret from GOOGLE_CLIENT_SECRETS instead.
+        # Robust PKCE OAuth flow:
+        # Google may require a code_verifier. We store it in Supabase by state instead
+        # of relying only on Flask session, because Render/browser redirects can lose session data.
         flow = Flow.from_client_config(
             client_config,
             scopes=SCOPES,
-            redirect_uri=redirect_uri
+            redirect_uri=redirect_uri,
+            autogenerate_code_verifier=True
         )
 
         authorization_url, state = flow.authorization_url(
@@ -1586,6 +1641,9 @@ def authorize():
         )
 
         session['state'] = state
+        if getattr(flow, "code_verifier", None):
+            save_oauth_state(state, flow.code_verifier)
+
         return redirect(authorization_url)
 
     except Exception as e:
@@ -1602,19 +1660,21 @@ def oauth2callback():
 
         client_config = json.loads(client_secrets_json)
         redirect_uri = os.environ.get("GOOGLE_REDIRECT_URI", url_for('oauth2callback', _external=True))
+        state = request.args.get('state') or session.get('state')
+        code_verifier = get_oauth_code_verifier(state)
 
-        # Callback is intentionally not dependent on session code_verifier, so the
-        # authorization still completes even if Render/browser loses Flask session data.
         flow = Flow.from_client_config(
             client_config,
             scopes=SCOPES,
-            state=session.get('state'),
-            redirect_uri=redirect_uri
+            state=state,
+            redirect_uri=redirect_uri,
+            code_verifier=code_verifier
         )
 
         flow.fetch_token(authorization_response=request.url)
         creds = flow.credentials
         token_data = save_token(creds)
+        delete_oauth_state(state)
         drive_service = get_drive_service()
 
         return render_template_string(OAUTH_CALLBACK_TEMPLATE, token_json=json.dumps(token_data))
