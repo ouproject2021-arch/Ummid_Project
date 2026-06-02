@@ -478,9 +478,9 @@ PROJECT_MASTER_TEMPLATE = """
 <form method="post"><div class="form-grid">
 <input type="hidden" name="slug" value="{{ project.slug }}">
 <div class="form-group"><label>Project Area</label><input name="project_name" value="{{ project.project_name }}" readonly></div>
-<div class="form-group"><label>Project ID</label><input name="project_id" value="{{ project.project_id or '' }}" placeholder="Example: EDU-2025-26-01" required></div>
+<div class="form-group"><label>Project ID</label><input name="project_id" value="{{ project.project_id or '' }}" placeholder="Example: EDU-CUBIC-01" required></div>
 <div class="form-group"><label>Project Title</label><input name="project_title" value="{{ project.project_title or '' }}" placeholder="Enter project title" required></div>
-{% if project.slug != 'education' %}<div class="form-group"><label>Company Code</label><input name="company_code" value="{{ project.company_code or '' }}" placeholder="Example: CUBIC01" required></div>{% endif %}
+{% if project.slug != 'education' %}<div class="form-group"><label>Company Code</label><input name="company_code" value="{{ project.company_code or '' }}" placeholder="Example: CUBIC" required></div>{% endif %}
 <div class="form-group"><label>Company Name</label><input name="company_name" value="{{ project.company_name or '' }}" placeholder="CSR Partner / Company Name"></div>
 <div class="form-group"><label>FY</label><input name="fy" value="{{ project.fy or '' }}" placeholder="FY 2025-26"></div>
 <div class="form-group"><label>Project Cost</label><input name="project_cost" value="{{ project.project_cost or '' }}" placeholder="Example: 500000"></div>
@@ -510,8 +510,8 @@ PROJECT_INFO_TEMPLATE = """
 <div class="container"><div class="form-card" style="max-width:1100px;"><h2>Project Data Entry</h2>
 <div class="page-note">Enter Project ID details once. These values will auto-populate in all project pages when Project ID is entered.</div>
 <form method="post"><div class="form-grid">
-<div class="form-group"><label>Project ID</label><input name="project_id" required placeholder="Example: EDU-2025-26-01"></div>
-<div class="form-group"><label>Company Code</label><input name="company_code" required placeholder="Example: CUBIC01"></div>
+<div class="form-group"><label>Project ID</label><input name="project_id" required placeholder="Example: EDU-CUBIC-01"></div>
+<div class="form-group"><label>Company Code</label><input name="company_code" required placeholder="Example: CUBIC"></div>
 <div class="form-group"><label>Company Name</label><input name="company_name" required></div>
 <div class="form-group"><label>Project Cost</label><input name="project_cost" type="number" step="0.01" required></div>
 <div class="form-group"><label>FY</label><input name="fy" placeholder="FY 2025-26" required></div>
