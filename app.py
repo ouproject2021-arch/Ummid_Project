@@ -539,6 +539,23 @@ PROJECT_INFO_TEMPLATE = """
 """ + HEADER_HTML + """
 <div class="container"><div class="form-card" style="max-width:1100px;"><h2>Project Data Entry</h2>
 <div class="page-note">Enter Project ID details once. These values will auto-populate in all project pages when Project ID is entered.</div>
+
+<div style="background:#f1f8e9;border:1px solid #c8e6c9;border-radius:12px;padding:12px;margin-top:12px;margin-bottom:15px;">
+<strong style="color:#1b5e20;">Project Area Codes Reference</strong>
+<table style="width:100%;border-collapse:collapse;margin-top:10px;">
+<tr><th style="text-align:left;padding:6px;">Project Area</th><th style="text-align:left;padding:6px;">Code</th></tr>
+<tr><td style="padding:6px;">Education</td><td style="padding:6px;">EDU</td></tr>
+<tr><td style="padding:6px;">Women Empowerment</td><td style="padding:6px;">WEP</td></tr>
+<tr><td style="padding:6px;">Agriculture</td><td style="padding:6px;">AGR</td></tr>
+<tr><td style="padding:6px;">Environmental/Climate</td><td style="padding:6px;">ENV</td></tr>
+<tr><td style="padding:6px;">Health & Hygiene</td><td style="padding:6px;">HHG</td></tr>
+<tr><td style="padding:6px;">Hunger & Malnutrition</td><td style="padding:6px;">HMN</td></tr>
+</table>
+<div style="margin-top:10px;font-size:13px;color:#555;">
+Examples: EDU-CUBIC-01, WEP-CUBIC-01, AGR-CUBIC-01, ENV-CUBIC-01, HHG-CUBIC-01, HMN-CUBIC-01
+</div>
+</div>
+
 <form method="post"><div class="form-grid">
 <div class="form-group"><label>Project ID</label><input name="project_id" required placeholder="Example: EDU-CUBIC-01"></div>
 <div class="form-group"><label>Company Code</label><input name="company_code" required placeholder="Example: CUBIC"></div>
