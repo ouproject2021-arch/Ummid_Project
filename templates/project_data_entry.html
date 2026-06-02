@@ -1,0 +1,36 @@
+
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</head><body>
+
+<div class="header">
+    <div style="display:flex; align-items:center;">
+        <img src="{{ url_for('static', filename='logo.png') }}" class="header-logo" alt="Logo" onerror="this.style.display='none'">
+        <strong>Ummid Foundation (Hope for Human)</strong>
+    </div>
+    <div>
+        <a href="/menu">Menu</a>
+        <a href="/projects">Projects</a>
+        <a href="/project-data-entry">Project Data Entry</a>
+        <a href="/records">Records</a>
+        <a href="/export">Download Excel</a>
+        <a href="/oauth-status">OAuth Status</a>
+        <a href="/logout">Logout</a>
+    </div>
+</div>
+
+<div class="container"><div class="form-card" style="max-width:1100px;"><h2>Project Data Entry</h2>
+<div class="page-note">Enter Project ID details once. These values will auto-populate in all project pages when Project ID is entered.</div>
+<form method="post"><div class="form-grid">
+<div class="form-group"><label>Project ID</label><input name="project_id" required placeholder="Example: EDU-CUBIC-01"></div>
+<div class="form-group"><label>Company Code</label><input name="company_code" required placeholder="Example: CUBIC"></div>
+<div class="form-group"><label>Company Name</label><input name="company_name" required></div>
+<div class="form-group"><label>Project Cost</label><input name="project_cost" type="number" step="0.01" required></div>
+<div class="form-group"><label>FY</label><input name="fy" placeholder="FY 2025-26" required></div>
+</div><button type="submit">Save Project Data</button></form>
+{% if success %}<p class="success">Project data saved successfully ✅</p>{% endif %}
+<br><h2 style="font-size:22px;">Saved Project Data</h2>
+<div class="table-wrap"><table id="recordsTable"><thead><tr><th>ID</th><th>Project ID</th><th>Company Code</th><th>Company Name</th><th>Project Cost</th><th>FY</th><th>Updated</th><th>Action</th></tr></thead>
+<tbody>{% for row in records %}<tr><td>{{ loop.index }}</td><td>{{ row.project_id }}</td><td>{{ row.company_code }}</td><td>{{ row.company_name }}</td><td>{{ row.project_cost }}</td><td>{{ row.fy }}</td><td>{{ row.updated_at }}</td><td><a class="action-link edit-link" href="/edit-project-info/{{ row.id }}">Edit</a><form class="inline-form" method="POST" action="/delete-project-info/{{ row.id }}" onsubmit="return confirm('Delete this project data entry?');"><button class="inline-button" type="submit">Delete</button></form></td></tr>{% endfor %}</tbody></table></div>
+</div></div></body></html>

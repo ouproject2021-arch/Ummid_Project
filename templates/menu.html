@@ -1,0 +1,40 @@
+
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+<style>
+.project-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:18px;}
+.project-card{display:block;text-decoration:none;color:#1f2937;background:linear-gradient(135deg,#ffffff,#f1f8e9);border:1px solid #d9e2dd;border-radius:16px;padding:18px;box-shadow:0 8px 20px rgba(15,23,42,0.08);transition:all .2s ease;}
+.project-card:hover{transform:translateY(-3px);box-shadow:0 12px 26px rgba(15,23,42,0.14);border-color:#2e7d32;}
+.project-card strong{color:#1b5e20;font-size:18px;display:block;margin-bottom:6px;}
+.quick-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px;}
+@media(max-width:700px){.project-grid,.quick-actions{grid-template-columns:1fr;}}
+</style>
+</head><body>
+
+<div class="header">
+    <div style="display:flex; align-items:center;">
+        <img src="{{ url_for('static', filename='logo.png') }}" class="header-logo" alt="Logo" onerror="this.style.display='none'">
+        <strong>Ummid Foundation (Hope for Human)</strong>
+    </div>
+    <div>
+        <a href="/menu">Menu</a>
+        <a href="/projects">Projects</a>
+        <a href="/project-data-entry">Project Data Entry</a>
+        <a href="/records">Records</a>
+        <a href="/export">Download Excel</a>
+        <a href="/oauth-status">OAuth Status</a>
+        <a href="/logout">Logout</a>
+    </div>
+</div>
+
+<div class="container"><div class="menu-card" style="max-width:1100px;"><h2>Ummid Foundation Project Dashboard</h2>
+<div class="page-note">Select a project page below to continue data entry/upload work.</div>
+<div class="project-grid">
+{% for project in projects %}
+<a class="project-card" href="/project/{{ project.slug }}">
+<strong>{{ project.name }}</strong>
+</a>
+{% endfor %}
+</div>
+</div></div></body></html>

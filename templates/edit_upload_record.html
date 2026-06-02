@@ -1,0 +1,32 @@
+
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</head><body>
+
+<div class="header">
+    <div style="display:flex; align-items:center;">
+        <img src="{{ url_for('static', filename='logo.png') }}" class="header-logo" alt="Logo" onerror="this.style.display='none'">
+        <strong>Ummid Foundation (Hope for Human)</strong>
+    </div>
+    <div>
+        <a href="/menu">Menu</a>
+        <a href="/projects">Projects</a>
+        <a href="/project-data-entry">Project Data Entry</a>
+        <a href="/records">Records</a>
+        <a href="/export">Download Excel</a>
+        <a href="/oauth-status">OAuth Status</a>
+        <a href="/logout">Logout</a>
+    </div>
+</div>
+
+<div class="container"><div class="form-card"><h2>Edit Upload Record</h2>
+<form method="post"><div class="form-grid">
+<div class="form-group"><label>Project Area</label><input name="project_slug" value="{{ record.project_slug }}" readonly></div>
+<div class="form-group"><label>Project ID</label><input name="udisc_number" value="{{ record.udisc_number }}" required></div>
+<div class="form-group"><label>Company Code / School Code</label><input name="school_code" value="{{ record.school_code }}" required></div>
+<div class="form-group"><label>Category</label><input name="category" value="{{ record.category }}" required></div>
+<div class="form-group full"><label>File Name</label><input name="original_filename" value="{{ record.original_filename }}" required></div>
+</div><button type="submit">Update Upload Record</button></form>
+<a class="menu-button secondary" href="/upload-records?project={{ record.project_slug }}">Back to Upload Records</a>
+</div></div></body></html>

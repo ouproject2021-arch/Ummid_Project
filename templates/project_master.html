@@ -1,0 +1,90 @@
+
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+<style>
+.action-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px;}
+.summary-box{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+.summary-item{background:#f1f8e9;border:1px solid #c8e6c9;border-radius:14px;padding:12px;text-align:center;}
+.summary-item strong{display:block;color:#1b5e20;font-size:20px;}
+@media(max-width:800px){.action-row,.summary-box{grid-template-columns:1fr;}}
+</style>
+
+<script>
+function fetchProjectInfo(){
+    var projectIdInput = document.getElementById('project_id');
+    if (!projectIdInput || !projectIdInput.value.trim()) return;
+
+    var projectId = projectIdInput.value.trim().toUpperCase();
+    projectIdInput.value = projectId;
+
+    fetch('/get-project-info/' + encodeURIComponent(projectId), {cache: 'no-store'})
+        .then(function(response){ return response.json(); })
+        .then(function(data){
+            if(data.found){
+                var cc = document.getElementById('company_code');
+                var cn = document.getElementById('company_name');
+                var fy = document.getElementById('fy');
+                var pc = document.getElementById('project_cost');
+
+                if(cc) cc.value = data.company_code || '';
+                if(cn) cn.value = data.company_name || '';
+                if(fy) fy.value = data.fy || '';
+                if(pc) pc.value = data.project_cost || '';
+            } else {
+                alert('Project ID not found. Please add it first from Menu > Project Data Entry.');
+            }
+        })
+        .catch(function(error){ console.log('Project lookup failed:', error); });
+}
+</script>
+
+</head><body>
+
+<div class="header">
+    <div style="display:flex; align-items:center;">
+        <img src="{{ url_for('static', filename='logo.png') }}" class="header-logo" alt="Logo" onerror="this.style.display='none'">
+        <strong>Ummid Foundation (Hope for Human)</strong>
+    </div>
+    <div>
+        <a href="/menu">Menu</a>
+        <a href="/projects">Projects</a>
+        <a href="/project-data-entry">Project Data Entry</a>
+        <a href="/records">Records</a>
+        <a href="/export">Download Excel</a>
+        <a href="/oauth-status">OAuth Status</a>
+        <a href="/logout">Logout</a>
+    </div>
+</div>
+
+<div class="container"><div class="form-card" style="max-width:1000px;"><h2>{{ project.project_name }}</h2>
+<div class="summary-box">
+<div class="summary-item"><strong>{{ stats.total_records }}</strong><span>Records</span></div>
+<div class="summary-item"><strong>{{ stats.total_uploads }}</strong><span>Uploads</span></div>
+<div class="summary-item"><strong>{{ project.fy or 'N/A' }}</strong><span>FY</span></div>
+<div class="summary-item"><strong>₹ {{ project.project_cost or '0' }}</strong><span>Cost</span></div>
+</div>
+<form method="post"><div class="form-grid">
+<input type="hidden" name="slug" value="{{ project.slug }}">
+<div class="form-group"><label>Project Area</label><input name="project_name" value="{{ project.project_name }}" readonly></div>
+<div class="form-group"><label>Project ID</label><input id="project_id" name="project_id" value="{{ project.project_id or '' }}" placeholder="Example: EDU-CUBIC-01" onblur="fetchProjectInfo()" required></div>
+<div class="form-group"><label>Project Title</label><input name="project_title" value="{{ project.project_title or '' }}" placeholder="Enter project title" required></div>
+{% if project.slug != 'education' %}<div class="form-group"><label>Company Code</label><input id="company_code" name="company_code" value="{{ project.company_code or '' }}" placeholder="Example: CUBIC" readonly required></div>{% endif %}
+<div class="form-group"><label>Company Name</label><input id="company_name" name="company_name" value="{{ project.company_name or '' }}" placeholder="CSR Partner / Company Name" readonly></div>
+<div class="form-group"><label>FY</label><input id="fy" name="fy" value="{{ project.fy or '' }}" placeholder="FY 2025-26" readonly></div>
+<div class="form-group"><label>Project Cost</label><input id="project_cost" name="project_cost" value="{{ project.project_cost or '' }}" placeholder="Example: 500000" readonly></div>
+<div class="form-group"><label>Status</label><select name="status">
+<option {% if project.status == 'Planning' %}selected{% endif %}>Planning</option>
+<option {% if project.status == 'In Progress' %}selected{% endif %}>In Progress</option>
+<option {% if project.status == 'Completed' %}selected{% endif %}>Completed</option>
+<option {% if project.status == 'On Hold' %}selected{% endif %}>On Hold</option>
+</select></div>
+<div class="form-group full"><label>About the Project</label><textarea name="about_project" placeholder="Write project objective, scope, beneficiary details and implementation notes">{{ project.about_project or '' }}</textarea></div>
+</div><button type="submit">Save Project Master</button></form>
+{% if success %}<p class="success">Project master updated successfully ✅</p>{% endif %}
+<div class="action-row">
+{% if project.slug == 'education' %}<a class="menu-button" href="/school-entry?project={{ project.slug }}">Add Data Entry</a>{% endif %}
+<a class="menu-button secondary" href="/image-upload?project={{ project.slug }}">Upload Pics/Files</a>
+{% if project.slug == 'education' %}<a class="menu-button" href="/records?project={{ project.slug }}">View Records</a>{% else %}<a class="menu-button" href="/upload-records?project={{ project.slug }}">View Records</a>{% endif %}
+</div>
+</div></div></body></html>

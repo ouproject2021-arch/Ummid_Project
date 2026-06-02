@@ -1,0 +1,32 @@
+
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</head><body>
+
+<div class="header">
+    <div style="display:flex; align-items:center;">
+        <img src="{{ url_for('static', filename='logo.png') }}" class="header-logo" alt="Logo" onerror="this.style.display='none'">
+        <strong>Ummid Foundation (Hope for Human)</strong>
+    </div>
+    <div>
+        <a href="/menu">Menu</a>
+        <a href="/projects">Projects</a>
+        <a href="/project-data-entry">Project Data Entry</a>
+        <a href="/records">Records</a>
+        <a href="/export">Download Excel</a>
+        <a href="/oauth-status">OAuth Status</a>
+        <a href="/logout">Logout</a>
+    </div>
+</div>
+
+<div class="container"><div class="form-card"><h2>Edit Project Data Entry</h2>
+<form method="post"><div class="form-grid">
+<div class="form-group"><label>Project ID</label><input name="project_id" value="{{ record.project_id }}" required></div>
+<div class="form-group"><label>Company Code</label><input name="company_code" value="{{ record.company_code }}" required></div>
+<div class="form-group"><label>Company Name</label><input name="company_name" value="{{ record.company_name }}" required></div>
+<div class="form-group"><label>Project Cost</label><input name="project_cost" type="number" step="0.01" value="{{ record.project_cost }}" required></div>
+<div class="form-group"><label>FY</label><input name="fy" value="{{ record.fy }}" required></div>
+</div><button type="submit">Update Project Data</button></form>
+<a class="menu-button secondary" href="/project-data-entry">Back to Project Data Entry</a>
+</div></div></body></html>

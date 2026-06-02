@@ -1,0 +1,68 @@
+
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+<script>function calculateTotal(){var boys=parseInt(document.getElementById('boys').value)||0;var girls=parseInt(document.getElementById('girls').value)||0;document.getElementById('total').value=boys+girls;}</script>
+
+<script>
+function validateEditSchoolCode(){
+    var schoolCodeInput = document.getElementById('school_code');
+    if (!schoolCodeInput) return;
+
+    var schoolCode = schoolCodeInput.value.trim();
+    var originalSchoolCode = "{{ record.school_code }}";
+
+    if (!schoolCode || schoolCode === originalSchoolCode) return;
+
+    fetch('/check-school-code/' + encodeURIComponent(schoolCode))
+        .then(function(response){ return response.json(); })
+        .then(function(data){
+            if(data.exists){
+                alert('Duplicate School Code detected. Please enter a unique School Code.');
+                schoolCodeInput.value = originalSchoolCode;
+                schoolCodeInput.focus();
+            }
+        })
+        .catch(function(error){
+            console.log('School Code validation failed:', error);
+        });
+}
+</script>
+
+</head><body>
+
+<div class="header">
+    <div style="display:flex; align-items:center;">
+        <img src="{{ url_for('static', filename='logo.png') }}" class="header-logo" alt="Logo" onerror="this.style.display='none'">
+        <strong>Ummid Foundation (Hope for Human)</strong>
+    </div>
+    <div>
+        <a href="/menu">Menu</a>
+        <a href="/projects">Projects</a>
+        <a href="/project-data-entry">Project Data Entry</a>
+        <a href="/records">Records</a>
+        <a href="/export">Download Excel</a>
+        <a href="/oauth-status">OAuth Status</a>
+        <a href="/logout">Logout</a>
+    </div>
+</div>
+
+<div class="container"><div class="form-card"><h2>Edit School Record</h2><form method="post"><div class="form-grid">
+<div class="form-group"><label>UDISC Number</label><input name="udisc" value="{{ record.udisc_number }}" required></div>
+<div class="form-group"><label>School Code</label><input id="school_code" name="school_code" value="{{ record.school_code }}" required onblur="validateEditSchoolCode()"></div>
+<div class="form-group"><label>School_Name</label><input name="school_name" value="{{ record.school_name }}" required></div>
+<div class="form-group"><label>Location</label><input name="location" value="{{ record.location }}"></div>
+<div class="form-group"><label>Year of Establishment</label><input name="year" value="{{ record.year }}"></div>
+<div class="form-group"><label>Girls</label><input id="girls" name="girls" value="{{ record.girls }}" onkeyup="calculateTotal()"></div>
+<div class="form-group"><label>Boys</label><input id="boys" name="boys" value="{{ record.boys }}" onkeyup="calculateTotal()"></div>
+<div class="form-group"><label>Total Students</label><input id="total" name="total" value="{{ record.total_students }}" readonly></div>
+<div class="form-group"><label>Company Name</label><input name="company" value="{{ record.company_name }}"></div>
+<div class="form-group"><label>FY</label><input name="fy" value="{{ record.fy }}"></div>
+<div class="form-group"><label>Phase</label><select name="phase">
+<option {% if record.phase == '1st Phase' %}selected{% endif %}>1st Phase</option>
+<option {% if record.phase == '2nd Phase' %}selected{% endif %}>2nd Phase</option>
+<option {% if record.phase == '3rd Phase' %}selected{% endif %}>3rd Phase</option>
+<option {% if record.phase == '4th Phase' %}selected{% endif %}>4th Phase</option>
+</select></div>
+<div class="form-group full"><label>Remarks</label><textarea name="remarks">{{ record.remarks }}</textarea></div>
+</div><button type="submit">Update Record</button></form></div></div></body></html>

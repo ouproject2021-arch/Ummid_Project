@@ -1,0 +1,110 @@
+
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+<script>
+function fetchProjectInfo(){
+    var projectIdInput = document.getElementById('project_id');
+    if (!projectIdInput || !projectIdInput.value.trim()) return;
+
+    var projectId = projectIdInput.value.trim().toUpperCase();
+    projectIdInput.value = projectId;
+
+    fetch('/get-project-info/' + encodeURIComponent(projectId), {cache: 'no-store'})
+        .then(function(response){ return response.json(); })
+        .then(function(data){
+            if(data.found){
+                var cc = document.getElementById('company_code');
+                var cn = document.getElementById('company') || document.getElementById('company_name');
+                var fy = document.getElementById('fy');
+                var pc = document.getElementById('project_cost');
+
+                if(cc) cc.value = data.company_code || '';
+                if(cn) cn.value = data.company_name || '';
+                if(fy) fy.value = data.fy || '';
+                if(pc) pc.value = data.project_cost || '';
+            } else {
+                alert('Project ID not found. Please add it first from Menu > Project Data Entry.');
+            }
+        })
+        .catch(function(error){ console.log('Project lookup failed:', error); });
+}
+
+function fetchSchoolByUdisc() {
+    var udisc = document.getElementById('udisc');
+    var schoolCodeInput = document.getElementById('school_code');
+    var msg = document.getElementById('school_lookup_message');
+    if (!udisc || !schoolCodeInput || !msg) return;
+
+    schoolCodeInput.value = "";
+    msg.innerText = "";
+
+    if (!udisc.value.trim()) return;
+
+    fetch('/get-school-by-udisc/' + encodeURIComponent(udisc.value.trim()))
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.found) {
+                schoolCodeInput.value = data.school_code || "";
+                msg.innerText = "School_Name: " + (data.school_name || "");
+                msg.style.color = "#1b5e20";
+            } else {
+                msg.innerText = "No school record found for this UDISC Number. Please enter school data first.";
+                msg.style.color = "#b71c1c";
+            }
+        })
+        .catch(function(error) {
+            msg.innerText = "Unable to fetch school details.";
+            msg.style.color = "#b71c1c";
+        });
+}
+</script>
+</head><body>
+
+<div class="header">
+    <div style="display:flex; align-items:center;">
+        <img src="{{ url_for('static', filename='logo.png') }}" class="header-logo" alt="Logo" onerror="this.style.display='none'">
+        <strong>Ummid Foundation (Hope for Human)</strong>
+    </div>
+    <div>
+        <a href="/menu">Menu</a>
+        <a href="/projects">Projects</a>
+        <a href="/project-data-entry">Project Data Entry</a>
+        <a href="/records">Records</a>
+        <a href="/export">Download Excel</a>
+        <a href="/oauth-status">OAuth Status</a>
+        <a href="/logout">Logout</a>
+    </div>
+</div>
+
+<div class="container"><div class="form-card"><h2>{{ project.project_name }} - Image Upload</h2>
+{% if project.slug == 'education' %}
+<p class="page-note">Folder will be created as Project ID_UDISC Number_School Code. You can upload multiple images for Smart Class, RO, Sanitary, Toilet and Other Photos.</p>
+<form method="post" enctype="multipart/form-data"><div class="form-grid">
+<input type="hidden" name="project_slug" value="education">
+<div class="form-group"><label>Project Area</label><input value="Education" readonly></div>
+<div class="form-group"><label>Project ID</label><input id="project_id" name="project_id" value="{{ project.project_id or '' }}" onblur="fetchProjectInfo()" required></div>
+<div class="form-group"><label>UDISC Number</label><input name="udisc" id="udisc" required onblur="fetchSchoolByUdisc()"></div>
+<div class="form-group"><label>School Code</label><input name="school_code" id="school_code" readonly required></div>
+<div class="form-group full"><p id="school_lookup_message" style="margin:0; color:#1b5e20; font-weight:bold;"></p></div>
+<div class="form-group full"><label>Smart Class Photos</label><input type="file" name="smart_class" accept="image/png,image/jpeg" multiple></div>
+<div class="form-group full"><label>RO Photos</label><input type="file" name="ro" accept="image/png,image/jpeg" multiple></div>
+<div class="form-group full"><label>Sanitary Photos</label><input type="file" name="sanitary" accept="image/png,image/jpeg" multiple></div>
+<div class="form-group full"><label>Toilet Photos</label><input type="file" name="toilet" accept="image/png,image/jpeg" multiple></div>
+<div class="form-group full"><label>Other Photos</label><input type="file" name="other_photos" accept="image/png,image/jpeg" multiple></div>
+</div><button type="submit">Upload Images</button></form>
+{% else %}
+<p class="page-note">Folder will be created as Project ID_Company Code.</p>
+<form method="post" enctype="multipart/form-data"><div class="form-grid">
+<input type="hidden" name="project_slug" value="{{ project.slug }}">
+<div class="form-group"><label>Project Area</label><input value="{{ project.project_name }}" readonly></div>
+<div class="form-group"><label>Project ID</label><input id="project_id" name="project_id" value="{{ project.project_id or '' }}" onblur="fetchProjectInfo()" required></div>
+<div class="form-group"><label>Project Title</label><input value="{{ project.project_title or '' }}" readonly></div>
+<div class="form-group"><label>Company Code</label><input id="company_code" name="company_code" value="{{ project.company_code or '' }}" readonly required></div>
+<div class="form-group"><label>Company Name</label><input id="company_name" readonly></div>
+<div class="form-group"><label>FY</label><input id="fy" readonly></div>
+<div class="form-group"><label>Project Cost</label><input id="project_cost" readonly></div>
+<div class="form-group full"><label>Upload Photos / Files</label><input type="file" name="project_files" accept="image/png,image/jpeg,application/pdf,.doc,.docx,.xls,.xlsx" multiple required></div>
+</div><button type="submit">Upload Files</button></form>
+{% endif %}
+{% if success %}<p class="success">{{ upload_count }} file(s) uploaded to Google Drive ✅</p>{% endif %}</div></div></body></html>

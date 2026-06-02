@@ -1,0 +1,108 @@
+
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+<script>
+function calculateTotal(){
+    var boys=parseInt(document.getElementById('boys').value)||0;
+    var girls=parseInt(document.getElementById('girls').value)||0;
+    document.getElementById('total').value=boys+girls;
+}
+
+function fetchProjectInfo(){
+    var projectIdInput = document.getElementById('project_id');
+    if (!projectIdInput || !projectIdInput.value.trim()) return;
+
+    var projectId = projectIdInput.value.trim().toUpperCase();
+    projectIdInput.value = projectId;
+
+    fetch('/get-project-info/' + encodeURIComponent(projectId), {cache: 'no-store'})
+        .then(function(response){ return response.json(); })
+        .then(function(data){
+            if(data.found){
+                var cc = document.getElementById('company_code');
+                var cn = document.getElementById('company') || document.getElementById('company_name');
+                var fy = document.getElementById('fy');
+                var pc = document.getElementById('project_cost');
+
+                if(cc) cc.value = data.company_code || '';
+                if(cn) cn.value = data.company_name || '';
+                if(fy) fy.value = data.fy || '';
+                if(pc) pc.value = data.project_cost || '';
+            } else {
+                alert('Project ID not found. Please add it first from Menu > Project Data Entry.');
+            }
+        })
+        .catch(function(error){ console.log('Project lookup failed:', error); });
+}
+
+function validateSchoolCode(){
+    var schoolCodeInput = document.getElementById('school_code');
+    var submitButton = document.getElementById('save_school_button');
+
+    if (!schoolCodeInput) return;
+
+    var schoolCode = schoolCodeInput.value.trim();
+
+    if (submitButton) {
+        submitButton.disabled = false;
+    }
+
+    if (!schoolCode) return;
+
+    fetch('/check-school-code/' + encodeURIComponent(schoolCode))
+        .then(function(response){ return response.json(); })
+        .then(function(data){
+            if(data.exists){
+                alert('Duplicate School Code detected. Please enter a unique School Code.');
+                schoolCodeInput.value = '';
+                schoolCodeInput.focus();
+
+                if (submitButton) {
+                    submitButton.disabled = true;
+                }
+            }
+        })
+        .catch(function(error){
+            console.log('School Code validation failed:', error);
+        });
+}
+</script>
+</head><body>
+
+<div class="header">
+    <div style="display:flex; align-items:center;">
+        <img src="{{ url_for('static', filename='logo.png') }}" class="header-logo" alt="Logo" onerror="this.style.display='none'">
+        <strong>Ummid Foundation (Hope for Human)</strong>
+    </div>
+    <div>
+        <a href="/menu">Menu</a>
+        <a href="/projects">Projects</a>
+        <a href="/project-data-entry">Project Data Entry</a>
+        <a href="/records">Records</a>
+        <a href="/export">Download Excel</a>
+        <a href="/oauth-status">OAuth Status</a>
+        <a href="/logout">Logout</a>
+    </div>
+</div>
+
+<div class="container"><div class="form-card"><h2>School Data Entry</h2><form method="post"><div class="form-grid">
+<input type="hidden" name="project_slug" value="education">
+<div class="form-group"><label>Project Area</label><input value="Education" readonly></div>
+<div class="form-group"><label>Project ID</label><input id="project_id" name="project_id" value="{{ project_master.project_id or '' }}" onblur="fetchProjectInfo()" required></div>
+<div class="form-group full"><label>Project Title</label><input value="{{ project_master.project_title or '' }}" readonly></div>
+<div class="form-group"><label>UDISC Number</label><input name="udisc" required></div>
+<div class="form-group"><label>School Code</label><input id="school_code" name="school_code" required onblur="validateSchoolCode()"></div>
+<div class="form-group"><label>School_Name</label><input name="school_name" required></div>
+<div class="form-group"><label>Location</label><input name="location"></div>
+<div class="form-group"><label>Year of Establishment</label><input name="year"></div>
+<div class="form-group"><label>Girls</label><input id="girls" name="girls" onkeyup="calculateTotal()"></div>
+<div class="form-group"><label>Boys</label><input id="boys" name="boys" onkeyup="calculateTotal()"></div>
+<div class="form-group"><label>Total Students</label><input id="total" name="total" readonly></div>
+<div class="form-group"><label>Company Code</label><input id="company_code" name="company_code" readonly></div>
+<div class="form-group"><label>Company Name</label><input id="company" name="company" readonly></div>
+<div class="form-group"><label>Project Cost</label><input id="project_cost" name="project_cost" readonly></div>
+<div class="form-group"><label>FY</label><input id="fy" name="fy" readonly></div>
+<div class="form-group"><label>Phase</label><select name="phase"><option>1st Phase</option><option>2nd Phase</option><option>3rd Phase</option><option>4th Phase</option></select></div>
+<div class="form-group full"><label>Remarks</label><textarea name="remarks"></textarea></div>
+</div><button id="save_school_button" type="submit">Save School Data</button></form>{% if success %}<p class="success">School data saved to Supabase ✅</p>{% endif %}</div></div></body></html>
