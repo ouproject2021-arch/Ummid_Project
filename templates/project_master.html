@@ -67,7 +67,12 @@ function fetchProjectInfo(){
 <form method="post"><div class="form-grid">
 <input type="hidden" name="slug" value="{{ project.slug }}">
 <div class="form-group"><label>Project Area</label><input name="project_name" value="{{ project.project_name }}" readonly></div>
-<div class="form-group"><label>Project ID</label><input id="project_id" name="project_id" value="{{ project.project_id or '' }}" placeholder="Example: EDU-CUBIC-01" onblur="fetchProjectInfo()" required></div>
+<div class="form-group"><label>Project ID</label><select id="project_id" name="project_id" onchange="fetchProjectInfo()" required>
+<option value="">Select Project ID</option>
+{% for item in project_ids %}
+<option value="{{ item.project_id }}" {% if item.project_id == project.project_id %}selected{% endif %}>{{ item.project_id }}</option>
+{% endfor %}
+</select></div>
 <div class="form-group"><label>Project Title</label><input name="project_title" value="{{ project.project_title or '' }}" placeholder="Enter project title" required></div>
 {% if project.slug != 'education' %}<div class="form-group"><label>Company Code</label><input id="company_code" name="company_code" value="{{ project.company_code or '' }}" placeholder="Example: CUBIC" readonly required></div>{% endif %}
 <div class="form-group"><label>Company Name</label><input id="company_name" name="company_name" value="{{ project.company_name or '' }}" placeholder="CSR Partner / Company Name" readonly></div>

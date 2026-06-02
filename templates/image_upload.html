@@ -83,7 +83,12 @@ function fetchSchoolByUdisc() {
 <form method="post" enctype="multipart/form-data"><div class="form-grid">
 <input type="hidden" name="project_slug" value="education">
 <div class="form-group"><label>Project Area</label><input value="Education" readonly></div>
-<div class="form-group"><label>Project ID</label><input id="project_id" name="project_id" value="{{ project.project_id or '' }}" onblur="fetchProjectInfo()" required></div>
+<div class="form-group"><label>Project ID</label><select id="project_id" name="project_id" onchange="fetchProjectInfo()" required>
+<option value="">Select Project ID</option>
+{% for item in project_ids %}
+<option value="{{ item.project_id }}" {% if item.project_id == project.project_id %}selected{% endif %}>{{ item.project_id }}</option>
+{% endfor %}
+</select></div>
 <div class="form-group"><label>UDISC Number</label><input name="udisc" id="udisc" required onblur="fetchSchoolByUdisc()"></div>
 <div class="form-group"><label>School Code</label><input name="school_code" id="school_code" readonly required></div>
 <div class="form-group full"><p id="school_lookup_message" style="margin:0; color:#1b5e20; font-weight:bold;"></p></div>
@@ -98,7 +103,12 @@ function fetchSchoolByUdisc() {
 <form method="post" enctype="multipart/form-data"><div class="form-grid">
 <input type="hidden" name="project_slug" value="{{ project.slug }}">
 <div class="form-group"><label>Project Area</label><input value="{{ project.project_name }}" readonly></div>
-<div class="form-group"><label>Project ID</label><input id="project_id" name="project_id" value="{{ project.project_id or '' }}" onblur="fetchProjectInfo()" required></div>
+<div class="form-group"><label>Project ID</label><select id="project_id" name="project_id" onchange="fetchProjectInfo()" required>
+<option value="">Select Project ID</option>
+{% for item in project_ids %}
+<option value="{{ item.project_id }}" {% if item.project_id == project.project_id %}selected{% endif %}>{{ item.project_id }}</option>
+{% endfor %}
+</select></div>
 <div class="form-group"><label>Project Title</label><input value="{{ project.project_title or '' }}" readonly></div>
 <div class="form-group"><label>Company Code</label><input id="company_code" name="company_code" value="{{ project.company_code or '' }}" readonly required></div>
 <div class="form-group"><label>Company Name</label><input id="company_name" readonly></div>
