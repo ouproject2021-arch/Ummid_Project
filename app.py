@@ -1061,44 +1061,6 @@ def oauth2callback():
         return f"❌ OAuth Callback Error: {str(e)}"
 
 
-OAUTH_STATUS_TEMPLATE = """
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-""" + BASE_STYLE + """
-</head><body>
-""" + HEADER_HTML + """
-<div class="container"><div class="form-card" style="max-width:760px;">
-<h2>Google Drive OAuth Status</h2>
-{% if connected %}
-<p class="success">✅ Google Drive OAuth is connected successfully.</p>
-<a class="menu-button" href="/menu">Back to Menu</a>
-{% else %}
-<p class="error">❌ Google Drive OAuth is not connected.</p>
-<div class="page-note" style="text-align:left;">
-Please click the button below and complete Google authorization. After authorization, the token will be saved automatically in Supabase/PostgreSQL and the app can use Google Drive without changing the existing app content.
-</div>
-<a class="menu-button" href="/authorize">Authorize Google Drive</a>
-<a class="menu-button secondary" href="/menu">Back to Menu</a>
-{% endif %}
-</div></div></body></html>
-"""
-
-OAUTH_CALLBACK_TEMPLATE = """
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-""" + BASE_STYLE + """
-</head><body>
-""" + HEADER_HTML + """
-<div class="container"><div class="form-card" style="max-width:900px;">
-<h2>Google Drive OAuth Connected</h2>
-<p class="success">✅ Google Drive OAuth connected successfully.</p>
-<div class="page-note" style="text-align:left;">
-Your token has been saved securely in Supabase/PostgreSQL. You do not need to copy it into Render unless you want to keep GOOGLE_TOKEN_JSON as a backup.
-</div>
-<label>GOOGLE_TOKEN_JSON</label>
-<textarea readonly style="width:100%;height:260px;margin-top:10px;font-family:monospace;">{{ token_json }}</textarea>
-<a class="menu-button" href="/oauth-status">Check OAuth Status</a>
-<a class="menu-button secondary" href="/menu">Back to Menu</a>
-</div></div></body></html>
-"""
 
 @app.route('/oauth-status')
 def oauth_status():
