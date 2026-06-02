@@ -71,6 +71,16 @@ PROJECT_MASTER_LIST = [
 ]
 
 
+PROJECT_PREFIX_MAP = {
+    "education": "EDU",
+    "women-empowerment": "WEP",
+    "agriculture": "AGR",
+    "environmental-climate": "ENV",
+    "health-hygiene": "HHG",
+    "hunger-malnutrition": "HMN",
+}
+
+
 # ========================
 # DATABASE HELPERS
 # ========================
@@ -356,6 +366,40 @@ def get_project_info_records():
     cur.close()
     conn.close()
     return records
+
+
+def get_project_ids_by_project_slug(project_slug):
+    init_db()
+    prefix = PROJECT_PREFIX_MAP.get(project_slug, "")
+    if not prefix:
+        return []
+
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT project_id
+        FROM project_info
+        WHERE UPPER(TRIM(project_id)) LIKE %s
+        ORDER BY project_id ASC
+    """, (prefix + "-%",))
+    records = cur.fetchall()
+    cur.close()
+    conn.close()
+    return records
+
+
+@app.route('/get-project-ids/<project_slug>')
+def get_project_ids_route(project_slug):
+    if 'user' not in session:
+        return {"items": [], "error": "Not logged in"}
+
+    try:
+        records = get_project_ids_by_project_slug(project_slug)
+        return {"items": [row.get("project_id") for row in records]}
+    except Exception as e:
+        print("PROJECT ID LIST ERROR:")
+        print(traceback.format_exc())
+        return {"items": [], "error": str(e)}
 
 
 
@@ -1126,7 +1170,8 @@ def project_master(slug):
 
         project = get_project_master(slug)
         stats = get_project_stats(slug)
-        return render_template('project_master.html', project=project, stats=stats, success=success)
+        project_ids = get_project_ids_by_project_slug(slug)
+        return render_template('project_master.html', project=project, stats=stats, success=success, project_ids=project_ids)
 
     except Exception as e:
         error_text = traceback.format_exc()
@@ -1283,7 +1328,8 @@ def school_entry():
             return f"<pre>Error occurred:\n{error_text}</pre>"
     selected_project = request.args.get('project', 'education')
     project_master_data = get_project_master('education')
-    return render_template('school_entry.html', success=success, projects=PROJECT_MASTER_LIST, selected_project=selected_project, project_master=project_master_data)
+    project_ids = get_project_ids_by_project_slug('education')
+    return render_template('school_entry.html', success=success, projects=PROJECT_MASTER_LIST, selected_project=selected_project, project_master=project_master_data, project_ids=project_ids)
 
 
 @app.route('/get-school-by-udisc/<udisc_number>')
@@ -1448,7 +1494,8 @@ def image_upload():
             print("IMAGE UPLOAD ERROR:")
             print(error_text)
             return f"<pre>Error occurred:\n{error_text}</pre>"
-    return render_template('image_upload.html', success=success, upload_count=locals().get("upload_count", 0), project=project)
+    project_ids = get_project_ids_by_project_slug(selected_project)
+    return render_template('image_upload.html', success=success, upload_count=locals().get("upload_count", 0), project=project, project_ids=project_ids)
 
 
 # ========================
