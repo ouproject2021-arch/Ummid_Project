@@ -510,10 +510,10 @@ function fetchProjectInfo(){
 <div class="form-group"><label>Project Area</label><input name="project_name" value="{{ project.project_name }}" readonly></div>
 <div class="form-group"><label>Project ID</label><input id="project_id" name="project_id" value="{{ project.project_id or '' }}" placeholder="Example: EDU-CUBIC-01" onblur="fetchProjectInfo()" required></div>
 <div class="form-group"><label>Project Title</label><input name="project_title" value="{{ project.project_title or '' }}" placeholder="Enter project title" required></div>
-{% if project.slug != 'education' %}<div class="form-group"><label>Company Code</label><input id="company_code" name="company_code" value="{{ project.company_code or '' }}" placeholder="Example: CUBIC" required></div>{% endif %}
-<div class="form-group"><label>Company Name</label><input id="company_name" name="company_name" value="{{ project.company_name or '' }}" placeholder="CSR Partner / Company Name"></div>
-<div class="form-group"><label>FY</label><input id="fy" name="fy" value="{{ project.fy or '' }}" placeholder="FY 2025-26"></div>
-<div class="form-group"><label>Project Cost</label><input id="project_cost" name="project_cost" value="{{ project.project_cost or '' }}" placeholder="Example: 500000"></div>
+{% if project.slug != 'education' %}<div class="form-group"><label>Company Code</label><input id="company_code" name="company_code" value="{{ project.company_code or '' }}" placeholder="Example: CUBIC" readonly required></div>{% endif %}
+<div class="form-group"><label>Company Name</label><input id="company_name" name="company_name" value="{{ project.company_name or '' }}" placeholder="CSR Partner / Company Name" readonly></div>
+<div class="form-group"><label>FY</label><input id="fy" name="fy" value="{{ project.fy or '' }}" placeholder="FY 2025-26" readonly></div>
+<div class="form-group"><label>Project Cost</label><input id="project_cost" name="project_cost" value="{{ project.project_cost or '' }}" placeholder="Example: 500000" readonly></div>
 <div class="form-group"><label>Status</label><select name="status">
 <option {% if project.status == 'Planning' %}selected{% endif %}>Planning</option>
 <option {% if project.status == 'In Progress' %}selected{% endif %}>In Progress</option>
