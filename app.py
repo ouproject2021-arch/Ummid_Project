@@ -3,7 +3,7 @@
 # Tech: Python Flask + Supabase PostgreSQL + Google Drive OAuth Image Upload
 # ===============================
 
-from flask import Flask, render_template_string, request, redirect, session, send_file, url_for
+from flask import Flask, render_template, request, redirect, session, send_file, url_for
 import pandas as pd
 import os
 from dotenv import load_dotenv
@@ -70,820 +70,6 @@ PROJECT_MASTER_LIST = [
     {"slug": "hunger-malnutrition", "name": "Hunger & Malnutrition"},
 ]
 
-
-# ========================
-# HTML TEMPLATES
-# ========================
-
-BASE_STYLE = """
-<style>
-:root {
-    --primary:#1b5e20;
-    --primary-light:#2e7d32;
-    --secondary:#1565c0;
-    --danger:#c62828;
-    --bg1:#e3f2fd;
-    --bg2:#f1f8e9;
-    --card:#ffffff;
-    --text:#1f2937;
-    --muted:#6b7280;
-    --border:#d9e2dd;
-    --shadow:0 10px 30px rgba(15, 23, 42, 0.14);
-}
-* { box-sizing:border-box; }
-html { scroll-behavior:smooth; }
-body {
-    font-family:'Segoe UI', Arial, sans-serif;
-    margin:0;
-    color:var(--text);
-    background:
-        radial-gradient(circle at top left, rgba(46,125,50,0.12), transparent 28%),
-        radial-gradient(circle at top right, rgba(21,101,192,0.12), transparent 25%),
-        linear-gradient(120deg, var(--bg1), var(--bg2));
-    min-height:100vh;
-}
-.header {
-    background:rgba(27,94,32,0.96);
-    color:white;
-    padding:12px 18px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    position:sticky;
-    top:0;
-    z-index:10;
-    box-shadow:0 6px 20px rgba(0,0,0,0.16);
-    backdrop-filter: blur(8px);
-}
-.header-logo {
-    width:42px;
-    height:42px;
-    object-fit:contain;
-    margin-right:10px;
-    background:white;
-    border-radius:10px;
-    padding:3px;
-}
-.header a {
-    color:white;
-    text-decoration:none;
-    margin-left:8px;
-    font-size:14px;
-    padding:8px 10px;
-    border-radius:8px;
-    transition:all 0.2s ease;
-}
-.header a:hover {
-    background:rgba(255,255,255,0.18);
-    transform:translateY(-1px);
-}
-.container {
-    display:flex;
-    justify-content:center;
-    padding:24px 15px;
-}
-.form-card, .menu-card {
-    background:rgba(255,255,255,0.96);
-    padding:24px;
-    border-radius:18px;
-    width:100%;
-    max-width:780px;
-    box-shadow:var(--shadow);
-    border:1px solid rgba(255,255,255,0.65);
-    animation:fadeIn 0.35s ease;
-}
-.form-card:hover, .menu-card:hover {
-    box-shadow:0 14px 38px rgba(15,23,42,0.18);
-}
-.form-grid {
-    display:grid;
-    grid-template-columns:repeat(2, 1fr);
-    gap:16px;
-}
-.form-group {
-    display:flex;
-    flex-direction:column;
-}
-.form-group.full {
-    grid-column:span 2;
-}
-h2 {
-    text-align:center;
-    color:var(--primary);
-    margin-top:4px;
-    margin-bottom:20px;
-    font-size:28px;
-    letter-spacing:0.2px;
-}
-label {
-    font-weight:700;
-    color:#254235;
-    margin-bottom:3px;
-}
-input, textarea, select {
-    width:100%;
-    padding:11px 12px;
-    margin-top:5px;
-    border-radius:10px;
-    border:1px solid var(--border);
-    background:#fbfdfc;
-    transition:border 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-    font-size:15px;
-}
-input:focus, textarea:focus, select:focus {
-    outline:none;
-    border-color:var(--primary-light);
-    background:white;
-    box-shadow:0 0 0 4px rgba(46,125,50,0.12);
-}
-textarea {
-    min-height:90px;
-    resize:vertical;
-}
-button, .menu-button {
-    width:100%;
-    background:linear-gradient(135deg, var(--primary-light), var(--primary));
-    color:white;
-    padding:13px;
-    border:none;
-    border-radius:10px;
-    margin-top:20px;
-    display:block;
-    text-align:center;
-    text-decoration:none;
-    font-size:16px;
-    font-weight:700;
-    cursor:pointer;
-    transition:transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
-    box-shadow:0 8px 18px rgba(46,125,50,0.22);
-}
-button:hover, .menu-button:hover {
-    transform:translateY(-2px);
-    box-shadow:0 12px 24px rgba(46,125,50,0.28);
-}
-button:disabled {
-    opacity:0.65;
-    cursor:not-allowed;
-    transform:none;
-}
-.menu-button.secondary {
-    background:linear-gradient(135deg, #1976d2, var(--secondary));
-    box-shadow:0 8px 18px rgba(21,101,192,0.22);
-}
-.success {
-    text-align:center;
-    color:#1b5e20;
-    background:#e8f5e9;
-    border:1px solid #c8e6c9;
-    border-radius:10px;
-    padding:10px;
-    font-weight:bold;
-    margin-top:14px;
-}
-.error {
-    text-align:center;
-    color:#b71c1c;
-    background:#ffebee;
-    border:1px solid #ffcdd2;
-    border-radius:10px;
-    padding:10px;
-    font-weight:bold;
-    margin-top:14px;
-}
-.table-wrap {
-    overflow-x:auto;
-    border-radius:14px;
-    border:1px solid var(--border);
-    background:white;
-}
-table {
-    width:100%;
-    border-collapse:collapse;
-    margin-top:0;
-}
-th, td {
-    border-bottom:1px solid #e5e7eb;
-    border-right:1px solid #edf2ef;
-    padding:10px;
-    font-size:13px;
-    vertical-align:middle;
-}
-th {
-    background:#e8f5e9;
-    color:#0f3d18;
-    position:sticky;
-    top:0;
-    z-index:1;
-}
-tbody tr:nth-child(even) { background:#fbfdfc; }
-tbody tr:hover { background:#f1f8e9; }
-.action-link {
-    display:inline-block;
-    padding:7px 11px;
-    border-radius:8px;
-    color:white;
-    text-decoration:none;
-    margin:2px;
-    font-size:12px;
-    font-weight:700;
-    transition:transform 0.2s ease, opacity 0.2s ease;
-}
-.action-link:hover { transform:translateY(-1px); opacity:0.92; }
-.edit-link { background:#1565c0; }
-.delete-link { background:#c62828; }
-.inline-form { display:inline; }
-.inline-button {
-    width:auto;
-    padding:7px 11px;
-    margin:2px;
-    font-size:12px;
-    background:#c62828;
-    box-shadow:none;
-}
-.badge {
-    display:inline-block;
-    padding:5px 9px;
-    border-radius:999px;
-    background:#e8f5e9;
-    color:#1b5e20;
-    font-size:12px;
-    font-weight:700;
-}
-.page-note {
-    text-align:center;
-    color:#1b5e20;
-    font-weight:bold;
-    background:#f1f8e9;
-    border:1px solid #c8e6c9;
-    padding:10px;
-    border-radius:12px;
-}
-.toolbar {
-    display:flex;
-    gap:10px;
-    align-items:center;
-    justify-content:space-between;
-    margin-bottom:14px;
-    flex-wrap:wrap;
-}
-.search-box {
-    max-width:340px;
-    margin:0;
-}
-@keyframes fadeIn {
-    from { opacity:0; transform:translateY(8px); }
-    to { opacity:1; transform:translateY(0); }
-}
-@media(max-width:700px) {
-    .header { flex-direction:column; gap:10px; align-items:flex-start; }
-    .header div:last-child { display:flex; flex-wrap:wrap; gap:4px; }
-    .header a { margin-left:0; }
-    .form-grid { grid-template-columns:1fr; }
-    .form-group.full { grid-column:span 1; }
-    .container { padding:16px 10px; }
-    h2 { font-size:24px; }
-}
-</style>
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('form').forEach(function(form) {
-        form.addEventListener('submit', function() {
-            var btn = form.querySelector('button[type="submit"]');
-            if (btn && !btn.classList.contains('inline-button')) {
-                btn.dataset.originalText = btn.innerText;
-                btn.innerText = 'Please wait...';
-                setTimeout(function(){ btn.disabled = true; }, 20);
-            }
-        });
-    });
-});
-
-function filterRecordsTable() {
-    var input = document.getElementById('recordSearch');
-    var table = document.getElementById('recordsTable');
-    if (!input || !table) return;
-
-    var filter = input.value.toLowerCase();
-    var rows = table.getElementsByTagName('tr');
-
-    for (var i = 1; i < rows.length; i++) {
-        var txt = rows[i].innerText.toLowerCase();
-        rows[i].style.display = txt.indexOf(filter) > -1 ? '' : 'none';
-    }
-}
-</script>
-"""
-
-HEADER_HTML = """
-<div class="header">
-    <div style="display:flex; align-items:center;">
-        <img src="{{ url_for('static', filename='logo.png') }}" class="header-logo" alt="Logo" onerror="this.style.display='none'">
-        <strong>Ummid Foundation (Hope for Human)</strong>
-    </div>
-    <div>
-        <a href="/menu">Menu</a>
-        <a href="/projects">Projects</a>
-        <a href="/project-data-entry">Project Data Entry</a>
-        <a href="/records">Records</a>
-        <a href="/export">Download Excel</a>
-        <a href="/oauth-status">OAuth Status</a>
-        <a href="/logout">Logout</a>
-    </div>
-</div>
-"""
-
-LOGIN_TEMPLATE = """
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-""" + BASE_STYLE + """
-</head><body><div class="container" style="min-height:100vh; align-items:center;"><div class="form-card" style="max-width:420px;"><div style="text-align:center; margin-bottom:15px;">
-<img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" style="width:100px; height:100px; object-fit:contain;" onerror="this.style.display='none'">
-<div style="margin-top:10px; color:#1b5e20; font-size:18px;">
-<strong>Ummid Foundation (Hope for Human)</strong>
-</div>
-</div>
-<h2>Login</h2>
-<form method="POST"><div class="form-group"><label>Username</label><input name="username" required></div>
-<div class="form-group"><label>Password</label><input type="password" name="password" required></div>
-<button type="submit">Login</button></form>{% if error %}<p class="error">{{ error }}</p>{% endif %}</div></div></body></html>
-"""
-
-MENU_TEMPLATE = """
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-""" + BASE_STYLE + """
-<style>
-.project-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:18px;}
-.project-card{display:block;text-decoration:none;color:#1f2937;background:linear-gradient(135deg,#ffffff,#f1f8e9);border:1px solid #d9e2dd;border-radius:16px;padding:18px;box-shadow:0 8px 20px rgba(15,23,42,0.08);transition:all .2s ease;}
-.project-card:hover{transform:translateY(-3px);box-shadow:0 12px 26px rgba(15,23,42,0.14);border-color:#2e7d32;}
-.project-card strong{color:#1b5e20;font-size:18px;display:block;margin-bottom:6px;}
-.quick-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:18px;}
-@media(max-width:700px){.project-grid,.quick-actions{grid-template-columns:1fr;}}
-</style>
-</head><body>
-""" + HEADER_HTML + """
-<div class="container"><div class="menu-card" style="max-width:1100px;"><h2>Ummid Foundation Project Dashboard</h2>
-<div class="page-note">Select a project page below to continue data entry/upload work.</div>
-<div class="project-grid">
-{% for project in projects %}
-<a class="project-card" href="/project/{{ project.slug }}">
-<strong>{{ project.name }}</strong>
-</a>
-{% endfor %}
-</div>
-</div></div></body></html>
-"""
-
-PROJECTS_TEMPLATE = """
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-""" + BASE_STYLE + """
-<style>
-.project-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:18px;}
-.project-card{display:block;text-decoration:none;color:#1f2937;background:linear-gradient(135deg,#ffffff,#f1f8e9);border:1px solid #d9e2dd;border-radius:16px;padding:18px;box-shadow:0 8px 20px rgba(15,23,42,0.08);transition:all .2s ease;}
-.project-card:hover{transform:translateY(-3px);box-shadow:0 12px 26px rgba(15,23,42,0.14);border-color:#2e7d32;}
-.project-card strong{color:#1b5e20;font-size:18px;display:block;margin-bottom:6px;}
-@media(max-width:700px){.project-grid{grid-template-columns:1fr;}}
-</style>
-</head><body>
-""" + HEADER_HTML + """
-<div class="container"><div class="menu-card" style="max-width:1000px;"><h2>Project Pages</h2>
-<div class="page-note">Six core project areas of Ummid Foundation.</div>
-<div class="project-grid">
-{% for project in projects %}
-<a class="project-card" href="/project/{{ project.slug }}">
-<strong>{{ project.name }}</strong>
-</a>
-{% endfor %}
-</div>
-</div></div></body></html>
-"""
-
-PROJECT_MASTER_TEMPLATE = """
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-""" + BASE_STYLE + """
-<style>
-.action-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px;}
-.summary-box{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
-.summary-item{background:#f1f8e9;border:1px solid #c8e6c9;border-radius:14px;padding:12px;text-align:center;}
-.summary-item strong{display:block;color:#1b5e20;font-size:20px;}
-@media(max-width:800px){.action-row,.summary-box{grid-template-columns:1fr;}}
-</style>
-
-<script>
-function fetchProjectInfo(){
-    var projectIdInput = document.getElementById('project_id');
-    if (!projectIdInput || !projectIdInput.value.trim()) return;
-
-    var projectId = projectIdInput.value.trim().toUpperCase();
-    projectIdInput.value = projectId;
-
-    fetch('/get-project-info/' + encodeURIComponent(projectId), {cache: 'no-store'})
-        .then(function(response){ return response.json(); })
-        .then(function(data){
-            if(data.found){
-                var cc = document.getElementById('company_code');
-                var cn = document.getElementById('company_name');
-                var fy = document.getElementById('fy');
-                var pc = document.getElementById('project_cost');
-
-                if(cc) cc.value = data.company_code || '';
-                if(cn) cn.value = data.company_name || '';
-                if(fy) fy.value = data.fy || '';
-                if(pc) pc.value = data.project_cost || '';
-            } else {
-                alert('Project ID not found. Please add it first from Menu > Project Data Entry.');
-            }
-        })
-        .catch(function(error){ console.log('Project lookup failed:', error); });
-}
-</script>
-
-</head><body>
-""" + HEADER_HTML + """
-<div class="container"><div class="form-card" style="max-width:1000px;"><h2>{{ project.project_name }}</h2>
-<div class="summary-box">
-<div class="summary-item"><strong>{{ stats.total_records }}</strong><span>Records</span></div>
-<div class="summary-item"><strong>{{ stats.total_uploads }}</strong><span>Uploads</span></div>
-<div class="summary-item"><strong>{{ project.fy or 'N/A' }}</strong><span>FY</span></div>
-<div class="summary-item"><strong>₹ {{ project.project_cost or '0' }}</strong><span>Cost</span></div>
-</div>
-<form method="post"><div class="form-grid">
-<input type="hidden" name="slug" value="{{ project.slug }}">
-<div class="form-group"><label>Project Area</label><input name="project_name" value="{{ project.project_name }}" readonly></div>
-<div class="form-group"><label>Project ID</label><input id="project_id" name="project_id" value="{{ project.project_id or '' }}" placeholder="Example: EDU-CUBIC-01" onblur="fetchProjectInfo()" required></div>
-<div class="form-group"><label>Project Title</label><input name="project_title" value="{{ project.project_title or '' }}" placeholder="Enter project title" required></div>
-{% if project.slug != 'education' %}<div class="form-group"><label>Company Code</label><input id="company_code" name="company_code" value="{{ project.company_code or '' }}" placeholder="Example: CUBIC" readonly required></div>{% endif %}
-<div class="form-group"><label>Company Name</label><input id="company_name" name="company_name" value="{{ project.company_name or '' }}" placeholder="CSR Partner / Company Name" readonly></div>
-<div class="form-group"><label>FY</label><input id="fy" name="fy" value="{{ project.fy or '' }}" placeholder="FY 2025-26" readonly></div>
-<div class="form-group"><label>Project Cost</label><input id="project_cost" name="project_cost" value="{{ project.project_cost or '' }}" placeholder="Example: 500000" readonly></div>
-<div class="form-group"><label>Status</label><select name="status">
-<option {% if project.status == 'Planning' %}selected{% endif %}>Planning</option>
-<option {% if project.status == 'In Progress' %}selected{% endif %}>In Progress</option>
-<option {% if project.status == 'Completed' %}selected{% endif %}>Completed</option>
-<option {% if project.status == 'On Hold' %}selected{% endif %}>On Hold</option>
-</select></div>
-<div class="form-group full"><label>About the Project</label><textarea name="about_project" placeholder="Write project objective, scope, beneficiary details and implementation notes">{{ project.about_project or '' }}</textarea></div>
-</div><button type="submit">Save Project Master</button></form>
-{% if success %}<p class="success">Project master updated successfully ✅</p>{% endif %}
-<div class="action-row">
-{% if project.slug == 'education' %}<a class="menu-button" href="/school-entry?project={{ project.slug }}">Add Data Entry</a>{% endif %}
-<a class="menu-button secondary" href="/image-upload?project={{ project.slug }}">Upload Pics/Files</a>
-{% if project.slug == 'education' %}<a class="menu-button" href="/records?project={{ project.slug }}">View Records</a>{% else %}<a class="menu-button" href="/upload-records?project={{ project.slug }}">View Records</a>{% endif %}
-</div>
-</div></div></body></html>
-"""
-
-
-PROJECT_INFO_TEMPLATE = """
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-""" + BASE_STYLE + """
-</head><body>
-""" + HEADER_HTML + """
-<div class="container"><div class="form-card" style="max-width:1100px;"><h2>Project Data Entry</h2>
-<div class="page-note">Enter Project ID details once. These values will auto-populate in all project pages when Project ID is entered.</div>
-
-<div style="background:#f1f8e9;border:1px solid #c8e6c9;border-radius:12px;padding:12px;margin-top:12px;margin-bottom:15px;">
-<strong style="color:#1b5e20;">Project Area Codes Reference</strong>
-<table style="width:100%;border-collapse:collapse;margin-top:10px;">
-<tr><th style="text-align:left;padding:6px;">Project Area</th><th style="text-align:left;padding:6px;">Code</th></tr>
-<tr><td style="padding:6px;">Education</td><td style="padding:6px;">EDU</td></tr>
-<tr><td style="padding:6px;">Women Empowerment</td><td style="padding:6px;">WEP</td></tr>
-<tr><td style="padding:6px;">Agriculture</td><td style="padding:6px;">AGR</td></tr>
-<tr><td style="padding:6px;">Environmental/Climate</td><td style="padding:6px;">ENV</td></tr>
-<tr><td style="padding:6px;">Health & Hygiene</td><td style="padding:6px;">HHG</td></tr>
-<tr><td style="padding:6px;">Hunger & Malnutrition</td><td style="padding:6px;">HMN</td></tr>
-</table>
-<div style="margin-top:10px;font-size:13px;color:#555;">
-Examples: EDU-CUBIC-01, WEP-CUBIC-01, AGR-CUBIC-01, ENV-CUBIC-01, HHG-CUBIC-01, HMN-CUBIC-01
-</div>
-</div>
-
-<form method="post"><div class="form-grid">
-<div class="form-group"><label>Project ID</label><input name="project_id" required placeholder="Example: EDU-CUBIC-01"></div>
-<div class="form-group"><label>Company Code</label><input name="company_code" required placeholder="Example: CUBIC"></div>
-<div class="form-group"><label>Company Name</label><input name="company_name" required></div>
-<div class="form-group"><label>Project Cost</label><input name="project_cost" type="number" step="0.01" required></div>
-<div class="form-group"><label>FY</label><input name="fy" placeholder="FY 2025-26" required></div>
-</div><button type="submit">Save Project Data</button></form>
-{% if success %}<p class="success">Project data saved successfully ✅</p>{% endif %}
-<br><h2 style="font-size:22px;">Saved Project Data</h2>
-<div class="table-wrap"><table id="recordsTable"><thead><tr><th>ID</th><th>Project ID</th><th>Company Code</th><th>Company Name</th><th>Project Cost</th><th>FY</th><th>Updated</th><th>Action</th></tr></thead>
-<tbody>{% for row in records %}<tr><td>{{ loop.index }}</td><td>{{ row.project_id }}</td><td>{{ row.company_code }}</td><td>{{ row.company_name }}</td><td>{{ row.project_cost }}</td><td>{{ row.fy }}</td><td>{{ row.updated_at }}</td><td><a class="action-link edit-link" href="/edit-project-info/{{ row.id }}">Edit</a><form class="inline-form" method="POST" action="/delete-project-info/{{ row.id }}" onsubmit="return confirm('Delete this project data entry?');"><button class="inline-button" type="submit">Delete</button></form></td></tr>{% endfor %}</tbody></table></div>
-</div></div></body></html>
-"""
-
-SCHOOL_ENTRY_TEMPLATE = """
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-""" + BASE_STYLE + """
-<script>
-function calculateTotal(){
-    var boys=parseInt(document.getElementById('boys').value)||0;
-    var girls=parseInt(document.getElementById('girls').value)||0;
-    document.getElementById('total').value=boys+girls;
-}
-
-function fetchProjectInfo(){
-    var projectIdInput = document.getElementById('project_id');
-    if (!projectIdInput || !projectIdInput.value.trim()) return;
-
-    var projectId = projectIdInput.value.trim().toUpperCase();
-    projectIdInput.value = projectId;
-
-    fetch('/get-project-info/' + encodeURIComponent(projectId), {cache: 'no-store'})
-        .then(function(response){ return response.json(); })
-        .then(function(data){
-            if(data.found){
-                var cc = document.getElementById('company_code');
-                var cn = document.getElementById('company') || document.getElementById('company_name');
-                var fy = document.getElementById('fy');
-                var pc = document.getElementById('project_cost');
-
-                if(cc) cc.value = data.company_code || '';
-                if(cn) cn.value = data.company_name || '';
-                if(fy) fy.value = data.fy || '';
-                if(pc) pc.value = data.project_cost || '';
-            } else {
-                alert('Project ID not found. Please add it first from Menu > Project Data Entry.');
-            }
-        })
-        .catch(function(error){ console.log('Project lookup failed:', error); });
-}
-
-function validateSchoolCode(){
-    var schoolCodeInput = document.getElementById('school_code');
-    var submitButton = document.getElementById('save_school_button');
-
-    if (!schoolCodeInput) return;
-
-    var schoolCode = schoolCodeInput.value.trim();
-
-    if (submitButton) {
-        submitButton.disabled = false;
-    }
-
-    if (!schoolCode) return;
-
-    fetch('/check-school-code/' + encodeURIComponent(schoolCode))
-        .then(function(response){ return response.json(); })
-        .then(function(data){
-            if(data.exists){
-                alert('Duplicate School Code detected. Please enter a unique School Code.');
-                schoolCodeInput.value = '';
-                schoolCodeInput.focus();
-
-                if (submitButton) {
-                    submitButton.disabled = true;
-                }
-            }
-        })
-        .catch(function(error){
-            console.log('School Code validation failed:', error);
-        });
-}
-</script>
-</head><body>
-""" + HEADER_HTML + """
-<div class="container"><div class="form-card"><h2>School Data Entry</h2><form method="post"><div class="form-grid">
-<input type="hidden" name="project_slug" value="education">
-<div class="form-group"><label>Project Area</label><input value="Education" readonly></div>
-<div class="form-group"><label>Project ID</label><input id="project_id" name="project_id" value="{{ project_master.project_id or '' }}" onblur="fetchProjectInfo()" required></div>
-<div class="form-group full"><label>Project Title</label><input value="{{ project_master.project_title or '' }}" readonly></div>
-<div class="form-group"><label>UDISC Number</label><input name="udisc" required></div>
-<div class="form-group"><label>School Code</label><input id="school_code" name="school_code" required onblur="validateSchoolCode()"></div>
-<div class="form-group"><label>School_Name</label><input name="school_name" required></div>
-<div class="form-group"><label>Location</label><input name="location"></div>
-<div class="form-group"><label>Year of Establishment</label><input name="year"></div>
-<div class="form-group"><label>Girls</label><input id="girls" name="girls" onkeyup="calculateTotal()"></div>
-<div class="form-group"><label>Boys</label><input id="boys" name="boys" onkeyup="calculateTotal()"></div>
-<div class="form-group"><label>Total Students</label><input id="total" name="total" readonly></div>
-<div class="form-group"><label>Company Code</label><input id="company_code" name="company_code" readonly></div>
-<div class="form-group"><label>Company Name</label><input id="company" name="company" readonly></div>
-<div class="form-group"><label>Project Cost</label><input id="project_cost" name="project_cost" readonly></div>
-<div class="form-group"><label>FY</label><input id="fy" name="fy" readonly></div>
-<div class="form-group"><label>Phase</label><select name="phase"><option>1st Phase</option><option>2nd Phase</option><option>3rd Phase</option><option>4th Phase</option></select></div>
-<div class="form-group full"><label>Remarks</label><textarea name="remarks"></textarea></div>
-</div><button id="save_school_button" type="submit">Save School Data</button></form>{% if success %}<p class="success">School data saved to Supabase ✅</p>{% endif %}</div></div></body></html>
-"""
-
-IMAGE_UPLOAD_TEMPLATE = """
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-""" + BASE_STYLE + """
-<script>
-function fetchProjectInfo(){
-    var projectIdInput = document.getElementById('project_id');
-    if (!projectIdInput || !projectIdInput.value.trim()) return;
-
-    var projectId = projectIdInput.value.trim().toUpperCase();
-    projectIdInput.value = projectId;
-
-    fetch('/get-project-info/' + encodeURIComponent(projectId), {cache: 'no-store'})
-        .then(function(response){ return response.json(); })
-        .then(function(data){
-            if(data.found){
-                var cc = document.getElementById('company_code');
-                var cn = document.getElementById('company') || document.getElementById('company_name');
-                var fy = document.getElementById('fy');
-                var pc = document.getElementById('project_cost');
-
-                if(cc) cc.value = data.company_code || '';
-                if(cn) cn.value = data.company_name || '';
-                if(fy) fy.value = data.fy || '';
-                if(pc) pc.value = data.project_cost || '';
-            } else {
-                alert('Project ID not found. Please add it first from Menu > Project Data Entry.');
-            }
-        })
-        .catch(function(error){ console.log('Project lookup failed:', error); });
-}
-
-function fetchSchoolByUdisc() {
-    var udisc = document.getElementById('udisc');
-    var schoolCodeInput = document.getElementById('school_code');
-    var msg = document.getElementById('school_lookup_message');
-    if (!udisc || !schoolCodeInput || !msg) return;
-
-    schoolCodeInput.value = "";
-    msg.innerText = "";
-
-    if (!udisc.value.trim()) return;
-
-    fetch('/get-school-by-udisc/' + encodeURIComponent(udisc.value.trim()))
-        .then(function(response) { return response.json(); })
-        .then(function(data) {
-            if (data.found) {
-                schoolCodeInput.value = data.school_code || "";
-                msg.innerText = "School_Name: " + (data.school_name || "");
-                msg.style.color = "#1b5e20";
-            } else {
-                msg.innerText = "No school record found for this UDISC Number. Please enter school data first.";
-                msg.style.color = "#b71c1c";
-            }
-        })
-        .catch(function(error) {
-            msg.innerText = "Unable to fetch school details.";
-            msg.style.color = "#b71c1c";
-        });
-}
-</script>
-</head><body>
-""" + HEADER_HTML + """
-<div class="container"><div class="form-card"><h2>{{ project.project_name }} - Image Upload</h2>
-{% if project.slug == 'education' %}
-<p class="page-note">Folder will be created as Project ID_UDISC Number_School Code. You can upload multiple images for Smart Class, RO, Sanitary, Toilet and Other Photos.</p>
-<form method="post" enctype="multipart/form-data"><div class="form-grid">
-<input type="hidden" name="project_slug" value="education">
-<div class="form-group"><label>Project Area</label><input value="Education" readonly></div>
-<div class="form-group"><label>Project ID</label><input id="project_id" name="project_id" value="{{ project.project_id or '' }}" onblur="fetchProjectInfo()" required></div>
-<div class="form-group"><label>UDISC Number</label><input name="udisc" id="udisc" required onblur="fetchSchoolByUdisc()"></div>
-<div class="form-group"><label>School Code</label><input name="school_code" id="school_code" readonly required></div>
-<div class="form-group full"><p id="school_lookup_message" style="margin:0; color:#1b5e20; font-weight:bold;"></p></div>
-<div class="form-group full"><label>Smart Class Photos</label><input type="file" name="smart_class" accept="image/png,image/jpeg" multiple></div>
-<div class="form-group full"><label>RO Photos</label><input type="file" name="ro" accept="image/png,image/jpeg" multiple></div>
-<div class="form-group full"><label>Sanitary Photos</label><input type="file" name="sanitary" accept="image/png,image/jpeg" multiple></div>
-<div class="form-group full"><label>Toilet Photos</label><input type="file" name="toilet" accept="image/png,image/jpeg" multiple></div>
-<div class="form-group full"><label>Other Photos</label><input type="file" name="other_photos" accept="image/png,image/jpeg" multiple></div>
-</div><button type="submit">Upload Images</button></form>
-{% else %}
-<p class="page-note">Folder will be created as Project ID_Company Code.</p>
-<form method="post" enctype="multipart/form-data"><div class="form-grid">
-<input type="hidden" name="project_slug" value="{{ project.slug }}">
-<div class="form-group"><label>Project Area</label><input value="{{ project.project_name }}" readonly></div>
-<div class="form-group"><label>Project ID</label><input id="project_id" name="project_id" value="{{ project.project_id or '' }}" onblur="fetchProjectInfo()" required></div>
-<div class="form-group"><label>Project Title</label><input value="{{ project.project_title or '' }}" readonly></div>
-<div class="form-group"><label>Company Code</label><input id="company_code" name="company_code" value="{{ project.company_code or '' }}" readonly required></div>
-<div class="form-group"><label>Company Name</label><input id="company_name" readonly></div>
-<div class="form-group"><label>FY</label><input id="fy" readonly></div>
-<div class="form-group"><label>Project Cost</label><input id="project_cost" readonly></div>
-<div class="form-group full"><label>Upload Photos / Files</label><input type="file" name="project_files" accept="image/png,image/jpeg,application/pdf,.doc,.docx,.xls,.xlsx" multiple required></div>
-</div><button type="submit">Upload Files</button></form>
-{% endif %}
-{% if success %}<p class="success">{{ upload_count }} file(s) uploaded to Google Drive ✅</p>{% endif %}</div></div></body></html>
-"""
-
-RECORDS_TEMPLATE = """
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-""" + BASE_STYLE + """
-</head><body>
-""" + HEADER_HTML + """
-<div class="container"><div class="form-card" style="max-width:1200px;"><h2>Saved School Records</h2><div class="toolbar"><input id="recordSearch" class="search-box" onkeyup="filterRecordsTable()" placeholder="Search by UDISC, School Code, Name, FY..."><span class="badge">Total Records: {{ records|length }}</span></div><div class="table-wrap"><table id="recordsTable">
-<thead><tr><th>ID</th><th>Project</th><th>UDISC</th><th>School Code</th>
-<th>School_Name</th><th>Location</th><th>Year</th><th>Girls</th><th>Boys</th><th>Total</th><th>Company</th><th>FY</th><th>Phase</th><th>Remarks</th><th>Created</th><th>Google Drive Folder</th><th>Action</th></tr></thead>
-<tbody>{% for row in records %}<tr><td>{{ loop.index }}</td><td>{{ row.project_slug or "education" }}</td><td>{{ row.udisc_number }}</td><td>{{ row.school_code }}</td>
-<td>{{ row.school_name }}</td><td>{{ row.location }}</td><td>{{ row.year }}</td><td>{{ row.girls }}</td><td>{{ row.boys }}</td><td>{{ row.total_students }}</td><td>{{ row.company_name }}</td><td>{{ row.fy }}</td><td>{{ row.phase }}</td><td>{{ row.remarks }}</td><td>{{ row.created_at }}</td>
-<td>
-{% if row.drive_folder_link %}
-<a class="action-link edit-link" href="{{ row.drive_folder_link }}" target="_blank">Open Folder</a>
-{% else %}
-N/A
-{% endif %}
-</td>
-<td>
-<a class="action-link edit-link" href="/edit-record/{{ row.id }}">Edit</a>
-<form class="inline-form" method="POST" action="/delete-record/{{ row.id }}" onsubmit="return confirm('Delete this record?');">
-<button class="inline-button" type="submit">Delete</button>
-</form>
-</td></tr>{% endfor %}</tbody>
-</table></div></div></div></body></html>
-"""
-
-UPLOAD_RECORDS_TEMPLATE = """
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-""" + BASE_STYLE + """
-</head><body>
-""" + HEADER_HTML + """
-<div class="container"><div class="form-card" style="max-width:1200px;"><h2>{{ project_name }} Upload Records</h2><div class="toolbar"><input id="recordSearch" class="search-box" onkeyup="filterRecordsTable()" placeholder="Search by Project ID, Company Code, File Name..."><span class="badge">Total Uploads: {{ records|length }}</span></div><div class="table-wrap"><table id="recordsTable">
-<thead><tr><th>ID</th><th>Project</th><th>Project ID</th><th>Company Code / School Code</th><th>Category</th><th>File Name</th><th>Uploaded</th><th>Google Drive File</th><th>Action</th></tr></thead>
-<tbody>{% for row in records %}<tr><td>{{ loop.index }}</td><td>{{ row.project_slug }}</td><td>{{ row.udisc_number }}</td><td>{{ row.school_code }}</td><td>{{ row.category }}</td><td>{{ row.original_filename }}</td><td>{{ row.uploaded_at }}</td><td>{% if row.drive_web_link %}<a class="action-link edit-link" href="{{ row.drive_web_link }}" target="_blank">Open File</a>{% else %}N/A{% endif %}</td><td><a class="action-link edit-link" href="/edit-upload-record/{{ row.id }}">Edit</a><form class="inline-form" method="POST" action="/delete-upload-record/{{ row.id }}" onsubmit="return confirm('Delete this upload record? This will remove the database entry only.');"><button class="inline-button" type="submit">Delete</button></form></td></tr>{% endfor %}</tbody>
-</table></div></div></div></body></html>
-"""
-
-
-
-EDIT_PROJECT_INFO_TEMPLATE = """
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-""" + BASE_STYLE + """
-</head><body>
-""" + HEADER_HTML + """
-<div class="container"><div class="form-card"><h2>Edit Project Data Entry</h2>
-<form method="post"><div class="form-grid">
-<div class="form-group"><label>Project ID</label><input name="project_id" value="{{ record.project_id }}" required></div>
-<div class="form-group"><label>Company Code</label><input name="company_code" value="{{ record.company_code }}" required></div>
-<div class="form-group"><label>Company Name</label><input name="company_name" value="{{ record.company_name }}" required></div>
-<div class="form-group"><label>Project Cost</label><input name="project_cost" type="number" step="0.01" value="{{ record.project_cost }}" required></div>
-<div class="form-group"><label>FY</label><input name="fy" value="{{ record.fy }}" required></div>
-</div><button type="submit">Update Project Data</button></form>
-<a class="menu-button secondary" href="/project-data-entry">Back to Project Data Entry</a>
-</div></div></body></html>
-"""
-
-EDIT_UPLOAD_RECORD_TEMPLATE = """
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-""" + BASE_STYLE + """
-</head><body>
-""" + HEADER_HTML + """
-<div class="container"><div class="form-card"><h2>Edit Upload Record</h2>
-<form method="post"><div class="form-grid">
-<div class="form-group"><label>Project Area</label><input name="project_slug" value="{{ record.project_slug }}" readonly></div>
-<div class="form-group"><label>Project ID</label><input name="udisc_number" value="{{ record.udisc_number }}" required></div>
-<div class="form-group"><label>Company Code / School Code</label><input name="school_code" value="{{ record.school_code }}" required></div>
-<div class="form-group"><label>Category</label><input name="category" value="{{ record.category }}" required></div>
-<div class="form-group full"><label>File Name</label><input name="original_filename" value="{{ record.original_filename }}" required></div>
-</div><button type="submit">Update Upload Record</button></form>
-<a class="menu-button secondary" href="/upload-records?project={{ record.project_slug }}">Back to Upload Records</a>
-</div></div></body></html>
-"""
-
-
-EDIT_RECORD_TEMPLATE = """
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-""" + BASE_STYLE + """
-<script>function calculateTotal(){var boys=parseInt(document.getElementById('boys').value)||0;var girls=parseInt(document.getElementById('girls').value)||0;document.getElementById('total').value=boys+girls;}</script>
-
-<script>
-function validateEditSchoolCode(){
-    var schoolCodeInput = document.getElementById('school_code');
-    if (!schoolCodeInput) return;
-
-    var schoolCode = schoolCodeInput.value.trim();
-    var originalSchoolCode = "{{ record.school_code }}";
-
-    if (!schoolCode || schoolCode === originalSchoolCode) return;
-
-    fetch('/check-school-code/' + encodeURIComponent(schoolCode))
-        .then(function(response){ return response.json(); })
-        .then(function(data){
-            if(data.exists){
-                alert('Duplicate School Code detected. Please enter a unique School Code.');
-                schoolCodeInput.value = originalSchoolCode;
-                schoolCodeInput.focus();
-            }
-        })
-        .catch(function(error){
-            console.log('School Code validation failed:', error);
-        });
-}
-</script>
-
-</head><body>
-""" + HEADER_HTML + """
-<div class="container"><div class="form-card"><h2>Edit School Record</h2><form method="post"><div class="form-grid">
-<div class="form-group"><label>UDISC Number</label><input name="udisc" value="{{ record.udisc_number }}" required></div>
-<div class="form-group"><label>School Code</label><input id="school_code" name="school_code" value="{{ record.school_code }}" required onblur="validateEditSchoolCode()"></div>
-<div class="form-group"><label>School_Name</label><input name="school_name" value="{{ record.school_name }}" required></div>
-<div class="form-group"><label>Location</label><input name="location" value="{{ record.location }}"></div>
-<div class="form-group"><label>Year of Establishment</label><input name="year" value="{{ record.year }}"></div>
-<div class="form-group"><label>Girls</label><input id="girls" name="girls" value="{{ record.girls }}" onkeyup="calculateTotal()"></div>
-<div class="form-group"><label>Boys</label><input id="boys" name="boys" value="{{ record.boys }}" onkeyup="calculateTotal()"></div>
-<div class="form-group"><label>Total Students</label><input id="total" name="total" value="{{ record.total_students }}" readonly></div>
-<div class="form-group"><label>Company Name</label><input name="company" value="{{ record.company_name }}"></div>
-<div class="form-group"><label>FY</label><input name="fy" value="{{ record.fy }}"></div>
-<div class="form-group"><label>Phase</label><select name="phase">
-<option {% if record.phase == '1st Phase' %}selected{% endif %}>1st Phase</option>
-<option {% if record.phase == '2nd Phase' %}selected{% endif %}>2nd Phase</option>
-<option {% if record.phase == '3rd Phase' %}selected{% endif %}>3rd Phase</option>
-<option {% if record.phase == '4th Phase' %}selected{% endif %}>4th Phase</option>
-</select></div>
-<div class="form-group full"><label>Remarks</label><textarea name="remarks">{{ record.remarks }}</textarea></div>
-</div><button type="submit">Update Record</button></form></div></div></body></html>
-"""
 
 # ========================
 # DATABASE HELPERS
@@ -1869,7 +1055,7 @@ def oauth2callback():
         delete_oauth_state(state)
         drive_service = get_drive_service()
 
-        return render_template_string(OAUTH_CALLBACK_TEMPLATE, token_json=json.dumps(token_data))
+        return render_template('oauth_callback.html', token_json=json.dumps(token_data))
 
     except Exception as e:
         return f"❌ OAuth Callback Error: {str(e)}"
@@ -1919,7 +1105,7 @@ def oauth_status():
     global drive_service
     drive_service = get_drive_service()
     connected = drive_service is not None
-    return render_template_string(OAUTH_STATUS_TEMPLATE, connected=connected)
+    return render_template('oauth_status.html', connected=connected)
 
 # ========================
 # LOGIN / MENU ROUTES
@@ -1934,21 +1120,21 @@ def login():
             return redirect('/menu')
         else:
             error = "Invalid login"
-    return render_template_string(LOGIN_TEMPLATE, error=error)
+    return render_template('login.html', error=error)
 
 
 @app.route('/menu')
 def menu():
     if 'user' not in session:
         return redirect('/')
-    return render_template_string(MENU_TEMPLATE, projects=PROJECT_MASTER_LIST)
+    return render_template('menu.html', projects=PROJECT_MASTER_LIST)
 
 
 @app.route('/projects')
 def projects():
     if 'user' not in session:
         return redirect('/')
-    return render_template_string(PROJECTS_TEMPLATE, projects=PROJECT_MASTER_LIST)
+    return render_template('projects.html', projects=PROJECT_MASTER_LIST)
 
 
 @app.route('/project/<slug>', methods=['GET', 'POST'])
@@ -1978,7 +1164,7 @@ def project_master(slug):
 
         project = get_project_master(slug)
         stats = get_project_stats(slug)
-        return render_template_string(PROJECT_MASTER_TEMPLATE, project=project, stats=stats, success=success)
+        return render_template('project_master.html', project=project, stats=stats, success=success)
 
     except Exception as e:
         error_text = traceback.format_exc()
@@ -2006,7 +1192,7 @@ def project_data_entry():
             })
             success = True
         records = get_project_info_records()
-        return render_template_string(PROJECT_INFO_TEMPLATE, records=records, success=success)
+        return render_template('project_data_entry.html', records=records, success=success)
     except Exception as e:
         error_text = traceback.format_exc()
         print("PROJECT DATA ENTRY ERROR:")
@@ -2034,7 +1220,7 @@ def edit_project_info(record_id):
                 "fy": request.form.get('fy', '')
             })
             return redirect('/project-data-entry')
-        return render_template_string(EDIT_PROJECT_INFO_TEMPLATE, record=record)
+        return render_template('edit_project_info.html', record=record)
     except Exception as e:
         error_text = traceback.format_exc()
         print("EDIT PROJECT INFO ERROR:")
@@ -2135,7 +1321,7 @@ def school_entry():
             return f"<pre>Error occurred:\n{error_text}</pre>"
     selected_project = request.args.get('project', 'education')
     project_master_data = get_project_master('education')
-    return render_template_string(SCHOOL_ENTRY_TEMPLATE, success=success, projects=PROJECT_MASTER_LIST, selected_project=selected_project, project_master=project_master_data)
+    return render_template('school_entry.html', success=success, projects=PROJECT_MASTER_LIST, selected_project=selected_project, project_master=project_master_data)
 
 
 @app.route('/get-school-by-udisc/<udisc_number>')
@@ -2300,7 +1486,7 @@ def image_upload():
             print("IMAGE UPLOAD ERROR:")
             print(error_text)
             return f"<pre>Error occurred:\n{error_text}</pre>"
-    return render_template_string(IMAGE_UPLOAD_TEMPLATE, success=success, upload_count=locals().get("upload_count", 0), project=project)
+    return render_template('image_upload.html', success=success, upload_count=locals().get("upload_count", 0), project=project)
 
 
 # ========================
@@ -2360,7 +1546,7 @@ def edit_record(record_id):
 
             return redirect('/records')
 
-        return render_template_string(EDIT_RECORD_TEMPLATE, record=record)
+        return render_template('edit_record.html', record=record)
 
     except Exception as e:
         error_text = traceback.format_exc()
@@ -2397,7 +1583,7 @@ def records():
         selected_project = request.args.get('project')
         school_records = get_school_records(selected_project)
         school_records = add_drive_folder_links_to_records(school_records)
-        return render_template_string(RECORDS_TEMPLATE, records=school_records)
+        return render_template('records.html', records=school_records)
     except Exception as e:
         error_text = traceback.format_exc()
         print("RECORDS ERROR:")
@@ -2416,7 +1602,7 @@ def upload_records():
         project = get_project_master(selected_project) if selected_project else None
         if project:
             project_name = project.get('project_name') or project_name
-        return render_template_string(UPLOAD_RECORDS_TEMPLATE, records=uploads, project_name=project_name)
+        return render_template('upload_records.html', records=uploads, project_name=project_name)
     except Exception as e:
         error_text = traceback.format_exc()
         print("UPLOAD RECORDS ERROR:")
@@ -2440,7 +1626,7 @@ def edit_upload_record(record_id):
                 "original_filename": request.form.get('original_filename', '')
             })
             return redirect('/upload-records?project=' + (record.get('project_slug') or ''))
-        return render_template_string(EDIT_UPLOAD_RECORD_TEMPLATE, record=record)
+        return render_template('edit_upload_record.html', record=record)
     except Exception as e:
         error_text = traceback.format_exc()
         print("EDIT UPLOAD RECORD ERROR:")
