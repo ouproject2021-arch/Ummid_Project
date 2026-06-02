@@ -466,6 +466,50 @@ PROJECT_MASTER_TEMPLATE = """
 .summary-item strong{display:block;color:#1b5e20;font-size:20px;}
 @media(max-width:800px){.action-row,.summary-box{grid-template-columns:1fr;}}
 </style>
+
+<script>
+function fetchProjectInfo(){
+    var projectIdInput = document.getElementById('project_id');
+    if (!projectIdInput || !projectIdInput.value.trim()) return;
+
+    var projectId = projectIdInput.value.trim().toUpperCase();
+    projectIdInput.value = projectId;
+
+    fetch('/get-project-info/' + encodeURIComponent(projectId), {cache: 'no-store'})
+        .then(function(response){ return response.json(); })
+        .then(function(data){
+            if(data.found){
+                var cc = document.getElementById('company_code');
+                var cn = document.getElementById('company_name');
+                var fy = document.getElementById('fy');
+                var pc = document.getElementById('project_cost');
+
+                if(cc) cc.value = data.company_code || '';
+                if(cn) cn.value = data.company_name || '';
+                if(fy) fy.value = data.fy || '';
+                if(pc) pc.value = data.project_cost || '';
+            } else {
+                alert('Project ID not found. Please add it first from Menu > Project Data Entry.');
+            }
+        })
+        .catch(function(error){ console.log('Project lookup failed:', error); });
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+    var projectIdInput = document.getElementById('project_id');
+    if (projectIdInput) {
+        projectIdInput.addEventListener('blur', fetchProjectInfo);
+        projectIdInput.addEventListener('change', fetchProjectInfo);
+        projectIdInput.addEventListener('keydown', function(event){
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                fetchProjectInfo();
+            }
+        });
+    }
+});
+</script>
+
 </head><body>
 """ + HEADER_HTML + """
 <div class="container"><div class="form-card" style="max-width:1000px;"><h2>{{ project.project_name }}</h2>
@@ -478,12 +522,12 @@ PROJECT_MASTER_TEMPLATE = """
 <form method="post"><div class="form-grid">
 <input type="hidden" name="slug" value="{{ project.slug }}">
 <div class="form-group"><label>Project Area</label><input name="project_name" value="{{ project.project_name }}" readonly></div>
-<div class="form-group"><label>Project ID</label><input name="project_id" value="{{ project.project_id or '' }}" placeholder="Example: EDU-CUBIC-01" required></div>
+<div class="form-group"><label>Project ID</label><input name="project_id" value="{{ project.project_id or '' }}" placeholder="Example: EDU-2025-26-01" required></div>
 <div class="form-group"><label>Project Title</label><input name="project_title" value="{{ project.project_title or '' }}" placeholder="Enter project title" required></div>
-{% if project.slug != 'education' %}<div class="form-group"><label>Company Code</label><input name="company_code" value="{{ project.company_code or '' }}" placeholder="Example: CUBIC" required></div>{% endif %}
-<div class="form-group"><label>Company Name</label><input name="company_name" value="{{ project.company_name or '' }}" placeholder="CSR Partner / Company Name"></div>
-<div class="form-group"><label>FY</label><input name="fy" value="{{ project.fy or '' }}" placeholder="FY 2025-26"></div>
-<div class="form-group"><label>Project Cost</label><input name="project_cost" value="{{ project.project_cost or '' }}" placeholder="Example: 500000"></div>
+{% if project.slug != 'education' %}<div class="form-group"><label>Company Code</label><input name="company_code" value="{{ project.company_code or '' }}" placeholder="Example: CUBIC01" required></div>{% endif %}
+<div class="form-group"><label>Company Name</label><input id="company_name" name="company_name" value="{{ project.company_name or '' }}" placeholder="CSR Partner / Company Name"></div>
+<div class="form-group"><label>FY</label><input id="fy" name="fy" value="{{ project.fy or '' }}" placeholder="FY 2025-26"></div>
+<div class="form-group"><label>Project Cost</label><input id="project_cost" name="project_cost" value="{{ project.project_cost or '' }}" placeholder="Example: 500000"></div>
 <div class="form-group"><label>Status</label><select name="status">
 <option {% if project.status == 'Planning' %}selected{% endif %}>Planning</option>
 <option {% if project.status == 'In Progress' %}selected{% endif %}>In Progress</option>
@@ -510,8 +554,8 @@ PROJECT_INFO_TEMPLATE = """
 <div class="container"><div class="form-card" style="max-width:1100px;"><h2>Project Data Entry</h2>
 <div class="page-note">Enter Project ID details once. These values will auto-populate in all project pages when Project ID is entered.</div>
 <form method="post"><div class="form-grid">
-<div class="form-group"><label>Project ID</label><input name="project_id" required placeholder="Example: EDU-CUBIC-01"></div>
-<div class="form-group"><label>Company Code</label><input name="company_code" required placeholder="Example: CUBIC"></div>
+<div class="form-group"><label>Project ID</label><input name="project_id" required placeholder="Example: EDU-2025-26-01"></div>
+<div class="form-group"><label>Company Code</label><input name="company_code" required placeholder="Example: CUBIC01"></div>
 <div class="form-group"><label>Company Name</label><input name="company_name" required></div>
 <div class="form-group"><label>Project Cost</label><input name="project_cost" type="number" step="0.01" required></div>
 <div class="form-group"><label>FY</label><input name="fy" placeholder="FY 2025-26" required></div>
@@ -536,14 +580,19 @@ function calculateTotal(){
 function fetchProjectInfo(){
     var projectIdInput = document.getElementById('project_id');
     if (!projectIdInput || !projectIdInput.value.trim()) return;
-    fetch('/get-project-info/' + encodeURIComponent(projectIdInput.value.trim()))
+
+    var projectId = projectIdInput.value.trim().toUpperCase();
+    projectIdInput.value = projectId;
+
+    fetch('/get-project-info/' + encodeURIComponent(projectId), {cache: 'no-store'})
         .then(function(response){ return response.json(); })
         .then(function(data){
             if(data.found){
                 var cc = document.getElementById('company_code');
-                var cn = document.getElementById('company');
+                var cn = document.getElementById('company') || document.getElementById('company_name');
                 var fy = document.getElementById('fy');
                 var pc = document.getElementById('project_cost');
+
                 if(cc) cc.value = data.company_code || '';
                 if(cn) cn.value = data.company_name || '';
                 if(fy) fy.value = data.fy || '';
@@ -554,6 +603,19 @@ function fetchProjectInfo(){
         })
         .catch(function(error){ console.log('Project lookup failed:', error); });
 }
+
+document.addEventListener('DOMContentLoaded', function(){
+    var projectIdInput = document.getElementById('project_id');
+    if (projectIdInput) {
+        projectIdInput.addEventListener('change', fetchProjectInfo);
+        projectIdInput.addEventListener('keydown', function(event){
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                fetchProjectInfo();
+            }
+        });
+    }
+});
 
 function validateSchoolCode(){
     var schoolCodeInput = document.getElementById('school_code');
@@ -618,14 +680,19 @@ IMAGE_UPLOAD_TEMPLATE = """
 function fetchProjectInfo(){
     var projectIdInput = document.getElementById('project_id');
     if (!projectIdInput || !projectIdInput.value.trim()) return;
-    fetch('/get-project-info/' + encodeURIComponent(projectIdInput.value.trim()))
+
+    var projectId = projectIdInput.value.trim().toUpperCase();
+    projectIdInput.value = projectId;
+
+    fetch('/get-project-info/' + encodeURIComponent(projectId), {cache: 'no-store'})
         .then(function(response){ return response.json(); })
         .then(function(data){
             if(data.found){
                 var cc = document.getElementById('company_code');
-                var cn = document.getElementById('company_name');
+                var cn = document.getElementById('company') || document.getElementById('company_name');
                 var fy = document.getElementById('fy');
                 var pc = document.getElementById('project_cost');
+
                 if(cc) cc.value = data.company_code || '';
                 if(cn) cn.value = data.company_name || '';
                 if(fy) fy.value = data.fy || '';
@@ -636,6 +703,19 @@ function fetchProjectInfo(){
         })
         .catch(function(error){ console.log('Project lookup failed:', error); });
 }
+
+document.addEventListener('DOMContentLoaded', function(){
+    var projectIdInput = document.getElementById('project_id');
+    if (projectIdInput) {
+        projectIdInput.addEventListener('change', fetchProjectInfo);
+        projectIdInput.addEventListener('keydown', function(event){
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                fetchProjectInfo();
+            }
+        });
+    }
+});
 
 function fetchSchoolByUdisc() {
     var udisc = document.getElementById('udisc');
@@ -1073,8 +1153,8 @@ def save_project_info(data):
             fy = EXCLUDED.fy,
             updated_at = CURRENT_TIMESTAMP
     """, (
-        data.get("project_id", "").strip(),
-        data.get("company_code", "").strip(),
+        data.get("project_id", "").strip().upper(),
+        data.get("company_code", "").strip().upper(),
         data.get("company_name", "").strip(),
         data.get("project_cost") or 0,
         data.get("fy", "").strip()
@@ -1091,9 +1171,9 @@ def get_project_info_by_id(project_id):
     cur.execute("""
         SELECT id, project_id, company_code, company_name, project_cost, fy, created_at, updated_at
         FROM project_info
-        WHERE project_id = %s
+        WHERE UPPER(TRIM(project_id)) = UPPER(TRIM(%s))
         LIMIT 1
-    """, (project_id,))
+    """, ((project_id or "").strip(),))
     record = cur.fetchone()
     cur.close()
     conn.close()
@@ -1146,8 +1226,8 @@ def update_project_info_record(record_id, data):
             updated_at = CURRENT_TIMESTAMP
         WHERE id = %s
     """, (
-        data.get("project_id", "").strip(),
-        data.get("company_code", "").strip(),
+        data.get("project_id", "").strip().upper(),
+        data.get("company_code", "").strip().upper(),
         data.get("company_name", "").strip(),
         data.get("project_cost") or 0,
         data.get("fy", "").strip(),
@@ -2002,7 +2082,7 @@ def get_project_info_route(project_id):
     if 'user' not in session:
         return {"found": False, "error": "Not logged in"}
     try:
-        record = get_project_info_by_id(project_id.strip())
+        record = get_project_info_by_id((project_id or "").strip())
         if not record:
             return {"found": False}
         return {
