@@ -153,6 +153,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS project_info (
             id SERIAL PRIMARY KEY,
             project_id TEXT UNIQUE NOT NULL,
+            project_title TEXT,
             company_code TEXT,
             company_name TEXT,
             project_cost NUMERIC DEFAULT 0,
@@ -181,6 +182,7 @@ def init_db():
     cur.execute("ALTER TABLE project_master ADD COLUMN IF NOT EXISTS project_id TEXT")
     cur.execute("ALTER TABLE project_master ADD COLUMN IF NOT EXISTS project_title TEXT")
     cur.execute("ALTER TABLE project_master ADD COLUMN IF NOT EXISTS company_code TEXT")
+    cur.execute("ALTER TABLE project_info ADD COLUMN IF NOT EXISTS project_title TEXT")
 
     for project in PROJECT_MASTER_LIST:
         cur.execute("""
@@ -317,9 +319,10 @@ def save_project_info(data):
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
-        INSERT INTO project_info (project_id, company_code, company_name, project_cost, fy)
-        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO project_info (project_id, project_title, company_code, company_name, project_cost, fy)
+        VALUES (%s, %s, %s, %s, %s, %s)
         ON CONFLICT (project_id) DO UPDATE SET
+            project_title = EXCLUDED.project_title,
             company_code = EXCLUDED.company_code,
             company_name = EXCLUDED.company_name,
             project_cost = EXCLUDED.project_cost,
@@ -327,6 +330,7 @@ def save_project_info(data):
             updated_at = CURRENT_TIMESTAMP
     """, (
         data.get("project_id", "").strip().upper(),
+        data.get("project_title", "").strip(),
         data.get("company_code", "").strip().upper(),
         data.get("company_name", "").strip(),
         data.get("project_cost") or 0,
@@ -342,7 +346,7 @@ def get_project_info_by_id(project_id):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
-        SELECT id, project_id, company_code, company_name, project_cost, fy, created_at, updated_at
+        SELECT id, project_id, project_title, company_code, company_name, project_cost, fy, created_at, updated_at
         FROM project_info
         WHERE UPPER(TRIM(project_id)) = UPPER(TRIM(%s))
         LIMIT 1
@@ -358,7 +362,7 @@ def get_project_info_records():
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
-        SELECT id, project_id, company_code, company_name, project_cost, fy, created_at, updated_at
+        SELECT id, project_id, project_title, company_code, company_name, project_cost, fy, created_at, updated_at
         FROM project_info
         ORDER BY id DESC
     """)
@@ -409,7 +413,7 @@ def get_project_info_record_by_id(record_id):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
-        SELECT id, project_id, company_code, company_name, project_cost, fy, created_at, updated_at
+        SELECT id, project_id, project_title, company_code, company_name, project_cost, fy, created_at, updated_at
         FROM project_info
         WHERE id = %s
     """, (record_id,))
@@ -426,6 +430,7 @@ def update_project_info_record(record_id, data):
     cur.execute("""
         UPDATE project_info
         SET project_id = %s,
+            project_title = %s,
             company_code = %s,
             company_name = %s,
             project_cost = %s,
@@ -434,6 +439,7 @@ def update_project_info_record(record_id, data):
         WHERE id = %s
     """, (
         data.get("project_id", "").strip().upper(),
+        data.get("project_title", "").strip(),
         data.get("company_code", "").strip().upper(),
         data.get("company_name", "").strip(),
         data.get("project_cost") or 0,
@@ -1192,6 +1198,7 @@ def project_data_entry():
                 return "Project ID is required"
             save_project_info({
                 "project_id": project_id,
+                "project_title": request.form.get('project_title', ''),
                 "company_code": request.form.get('company_code', ''),
                 "company_name": request.form.get('company_name', ''),
                 "project_cost": request.form.get('project_cost', 0),
@@ -1221,6 +1228,7 @@ def edit_project_info(record_id):
                 return "Project ID is required"
             update_project_info_record(record_id, {
                 "project_id": project_id,
+                "project_title": request.form.get('project_title', ''),
                 "company_code": request.form.get('company_code', ''),
                 "company_name": request.form.get('company_name', ''),
                 "project_cost": request.form.get('project_cost', 0),
@@ -1260,6 +1268,7 @@ def get_project_info_route(project_id):
         return {
             "found": True,
             "project_id": record.get("project_id") or "",
+            "project_title": record.get("project_title") or "",
             "company_code": record.get("company_code") or "",
             "company_name": record.get("company_name") or "",
             "project_cost": str(record.get("project_cost") or ""),
