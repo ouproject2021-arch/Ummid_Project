@@ -18,11 +18,13 @@ function fetchProjectInfo(){
                 var cn = document.getElementById('company') || document.getElementById('company_name');
                 var fy = document.getElementById('fy');
                 var pc = document.getElementById('project_cost');
+                var pt = document.getElementById('project_title');
 
                 if(cc) cc.value = data.company_code || '';
                 if(cn) cn.value = data.company_name || '';
                 if(fy) fy.value = data.fy || '';
                 if(pc) pc.value = data.project_cost || '';
+                if(pt) pt.value = data.project_title || '';
             } else {
                 alert('Project ID not found. Please add it first from Menu > Project Data Entry.');
             }
@@ -89,6 +91,7 @@ function fetchSchoolByUdisc() {
 <option value="{{ item.project_id }}" {% if item.project_id == project.project_id %}selected{% endif %}>{{ item.project_id }}</option>
 {% endfor %}
 </select></div>
+<div class="form-group"><label>Project Title</label><input id="project_title" name="project_title" value="{{ project.project_title or '' }}" readonly></div>
 <div class="form-group"><label>UDISC Number</label><input name="udisc" id="udisc" required onblur="fetchSchoolByUdisc()"></div>
 <div class="form-group"><label>School Code</label><input name="school_code" id="school_code" readonly required></div>
 <div class="form-group full"><p id="school_lookup_message" style="margin:0; color:#1b5e20; font-weight:bold;"></p></div>
@@ -109,7 +112,7 @@ function fetchSchoolByUdisc() {
 <option value="{{ item.project_id }}" {% if item.project_id == project.project_id %}selected{% endif %}>{{ item.project_id }}</option>
 {% endfor %}
 </select></div>
-<div class="form-group"><label>Project Title</label><input value="{{ project.project_title or '' }}" readonly></div>
+<div class="form-group"><label>Project Title</label><input id="project_title" name="project_title" value="{{ project.project_title or '' }}" readonly></div>
 <div class="form-group"><label>Company Code</label><input id="company_code" name="company_code" value="{{ project.company_code or '' }}" readonly required></div>
 <div class="form-group"><label>Company Name</label><input id="company_name" readonly></div>
 <div class="form-group"><label>FY</label><input id="fy" readonly></div>
