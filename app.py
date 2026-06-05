@@ -26,7 +26,7 @@ from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
+from googleapiclient.http import MediaIoBaseUpload, MediaIoBaseDownload
 from googleapiclient.errors import HttpError
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
@@ -55,6 +55,7 @@ TOKEN_FILE = "token.json"
 drive_service = None
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+BENEFICIARY_ALLOWED_EXTENSIONS = {'xls', 'xlsx'}
 
 
 # ========================
@@ -1733,6 +1734,204 @@ def export():
         print("EXPORT ERROR:")
         print(error_text)
         return f"<pre>Error occurred:\n{error_text}</pre>"
+
+
+# ========================
+# BENEFICIARY ACCOUNT HELPERS
+# ========================
+
+def allowed_beneficiary_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in BENEFICIARY_ALLOWED_EXTENSIONS
+
+
+def beneficiary_file_sort_key(file_info):
+    return file_info.get("createdTime") or file_info.get("modifiedTime") or ""
+
+
+def list_beneficiary_excel_files():
+    global drive_service
+    if not drive_service:
+        drive_service = get_drive_service()
+    if not drive_service:
+        return []
+    try:
+        query = (
+            f"'{PARENT_FOLDER_ID}' in parents and "
+            f"trashed=false and "
+            f"(name contains 'Beneficiary' or name contains 'beneficiary')"
+        )
+        response = drive_service.files().list(
+            q=query,
+            fields="files(id, name, webViewLink, webContentLink, createdTime, modifiedTime, mimeType)",
+            supportsAllDrives=True,
+            includeItemsFromAllDrives=True,
+            orderBy="createdTime desc"
+        ).execute()
+        files = response.get("files", [])
+        excel_files = [
+            item for item in files
+            if str(item.get("name", "")).lower().endswith((".xlsx", ".xls"))
+        ]
+        excel_files.sort(key=beneficiary_file_sort_key, reverse=True)
+        return excel_files
+    except Exception as e:
+        print("❌ BENEFICIARY FILE LIST ERROR:", repr(e))
+        return []
+
+
+def get_latest_beneficiary_excel_file():
+    files = list_beneficiary_excel_files()
+    return files[0] if files else None
+
+
+def download_drive_file_bytes(file_id):
+    global drive_service
+    if not drive_service:
+        drive_service = get_drive_service()
+    if not drive_service:
+        raise Exception("Drive service not initialized. Open /authorize first.")
+
+    request_download = drive_service.files().get_media(fileId=file_id, supportsAllDrives=True)
+    file_bytes = io.BytesIO()
+    downloader = MediaIoBaseDownload(file_bytes, request_download)
+
+    done = False
+    while not done:
+        status, done = downloader.next_chunk()
+
+    file_bytes.seek(0)
+    return file_bytes
+
+
+def analyze_beneficiary_excel_from_bytes(file_bytes):
+    summary = {
+        "total_count": 0,
+        "sheet_counts": {},
+        "gender_counts": {},
+        "district_counts": {},
+        "errors": []
+    }
+
+    try:
+        workbook = pd.read_excel(file_bytes, sheet_name=None)
+    except Exception as e:
+        summary["errors"].append(f"Unable to read Excel file: {str(e)}")
+        return summary
+
+    target_sheets = ["UTTRAKHAND", "Delhi/NCR"]
+
+    for sheet_name in target_sheets:
+        if sheet_name not in workbook:
+            summary["sheet_counts"][sheet_name] = 0
+            summary["errors"].append(f"Sheet not found: {sheet_name}")
+            continue
+
+        df = workbook[sheet_name].copy()
+        df = df.dropna(how="all")
+        row_count = len(df)
+
+        summary["sheet_counts"][sheet_name] = row_count
+        summary["total_count"] += row_count
+
+        if "Gender" in df.columns:
+            gender_series = df["Gender"].fillna("Blank").astype(str).str.strip().replace("", "Blank")
+            for gender, count in gender_series.value_counts().items():
+                summary["gender_counts"][gender] = summary["gender_counts"].get(gender, 0) + int(count)
+        else:
+            summary["errors"].append(f"Gender column not found in sheet: {sheet_name}")
+
+        location_column = None
+        if "District" in df.columns:
+            location_column = "District"
+        elif "Address" in df.columns:
+            location_column = "Address"
+
+        if location_column:
+            location_series = df[location_column].fillna("Blank").astype(str).str.strip().replace("", "Blank")
+            for district, count in location_series.value_counts().items():
+                summary["district_counts"][district] = summary["district_counts"].get(district, 0) + int(count)
+        else:
+            summary["errors"].append(f"District/Address column not found in sheet: {sheet_name}")
+
+    return summary
+
+
+def get_beneficiary_summary_from_latest_drive_file():
+    latest_file = get_latest_beneficiary_excel_file()
+    if not latest_file:
+        return None, {
+            "total_count": 0,
+            "sheet_counts": {},
+            "gender_counts": {},
+            "district_counts": {},
+            "errors": ["No Beneficiary Excel file found in parent Google Drive folder."]
+        }
+
+    try:
+        file_bytes = download_drive_file_bytes(latest_file.get("id"))
+        summary = analyze_beneficiary_excel_from_bytes(file_bytes)
+        return latest_file, summary
+    except Exception as e:
+        return latest_file, {
+            "total_count": 0,
+            "sheet_counts": {},
+            "gender_counts": {},
+            "district_counts": {},
+            "errors": [str(e)]
+        }
+
+
+@app.route('/beneficiary-account', methods=['GET', 'POST'])
+def beneficiary_account():
+    if 'user' not in session:
+        return redirect('/')
+
+    success = False
+    error = ""
+    uploaded_file_info = None
+
+    try:
+        if request.method == 'POST':
+            excel_file = request.files.get('beneficiary_excel')
+
+            if not excel_file or not excel_file.filename:
+                error = "Please select an Excel file to upload."
+            elif not allowed_beneficiary_file(excel_file.filename):
+                error = "Only .xls and .xlsx files are allowed."
+            else:
+                timestamp = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
+                original_name = secure_filename(excel_file.filename)
+                drive_name = f"Beneficiary_Account_{timestamp}_{original_name}"
+
+                excel_file.filename = drive_name
+                uploaded = upload_file(excel_file, PARENT_FOLDER_ID)
+
+                uploaded_file_info = {
+                    "id": uploaded.get("id"),
+                    "name": uploaded.get("name"),
+                    "webViewLink": uploaded.get("webViewLink")
+                }
+                success = True
+
+        latest_file, summary = get_beneficiary_summary_from_latest_drive_file()
+        files = list_beneficiary_excel_files()
+
+        return render_template(
+            'beneficiary_account.html',
+            success=success,
+            error=error,
+            uploaded_file=uploaded_file_info,
+            latest_file=latest_file,
+            summary=summary,
+            files=files
+        )
+
+    except Exception as e:
+        error_text = traceback.format_exc()
+        print("BENEFICIARY ACCOUNT ERROR:")
+        print(error_text)
+        return f"<pre>Error occurred:\n{error_text}</pre>"
+
 
 # ========================
 # TEST ROUTES
