@@ -808,13 +808,21 @@ def save_token(creds):
 
 
 def load_token():
-    # Priority 1: Render environment variable, if already configured.
-    token_data = normalize_token_json(os.environ.get("GOOGLE_TOKEN_JSON"))
+    """
+    Load Google OAuth token.
+
+    Supabase/PostgreSQL token is preferred first because /authorize saves the latest
+    working token there. GOOGLE_TOKEN_JSON in Render can become old/stale and should
+    only be used as a backup.
+    """
+
+    # Priority 1: Supabase/PostgreSQL token saved after /authorize.
+    token_data = load_token_from_db()
     if token_data:
         return token_data
 
-    # Priority 2: Supabase/PostgreSQL token saved after /authorize.
-    token_data = load_token_from_db()
+    # Priority 2: Render environment variable, useful as backup only.
+    token_data = normalize_token_json(os.environ.get("GOOGLE_TOKEN_JSON"))
     if token_data:
         return token_data
 
@@ -825,27 +833,47 @@ def load_token():
                 return json.load(token_file)
         except Exception as e:
             print("❌ LOCAL TOKEN FILE READ ERROR:", repr(e))
+
     return None
 
 
 def get_drive_service():
+    """
+    Build a fresh Google Drive service from the saved OAuth token whenever needed.
+    This prevents upload failures after Render restart when global drive_service is None.
+    """
     try:
         token_data = load_token()
+
         if not token_data:
             print("❌ Google OAuth token not found. Open /authorize first.")
             return None
+
         creds = Credentials.from_authorized_user_info(token_data, SCOPES)
+
         if creds and creds.expired and creds.refresh_token:
+            print("🔄 Google OAuth token expired. Refreshing token...")
             creds.refresh(Request())
             save_token(creds)
+
         if not creds or not creds.valid:
             print("❌ Google OAuth credentials are invalid. Open /authorize again.")
             return None
+
         service = build('drive', 'v3', credentials=creds, cache_discovery=False)
+
+        # Confirm the token can actually access the configured parent folder.
+        service.files().get(
+            fileId=PARENT_FOLDER_ID,
+            fields='id,name',
+            supportsAllDrives=True
+        ).execute()
+
         print("✅ Google Drive OAuth Connected Successfully")
         return service
+
     except Exception as e:
-        print("❌ GOOGLE DRIVE OAUTH CONNECTION ERROR:", str(e))
+        print("❌ GOOGLE DRIVE OAUTH CONNECTION ERROR:", repr(e))
         return None
 
 
@@ -918,6 +946,7 @@ def create_folder(name, parent_id):
         return folder_id
     except Exception as e:
         print("❌ FOLDER CREATION ERROR:", repr(e))
+        drive_service = None
         return None
 
 
@@ -958,6 +987,7 @@ def upload_file(file, folder_id):
         raise Exception(f"Google Drive upload failed for {file.filename}: {error_content}")
     except Exception as e:
         print("❌ FILE UPLOAD ERROR:", repr(e))
+        drive_service = None
         raise e
 
 
@@ -1428,7 +1458,7 @@ def image_upload():
                 main_folder_name = build_education_drive_folder_name(project_id, udisc_number, school_code)
                 school_folder_id = create_folder(main_folder_name, PARENT_FOLDER_ID)
                 if not school_folder_id:
-                    return "❌ Failed to create School folder in Google Drive. Open /authorize first."
+                    return "❌ Failed to create School folder in Google Drive. Please check OAuth Status and verify PARENT_FOLDER_ID access."
                 folders = {
                     "smart_class": create_folder("Smart_Class", school_folder_id),
                     "ro": create_folder("RO", school_folder_id),
@@ -1476,7 +1506,7 @@ def image_upload():
                 main_folder_name = build_other_project_drive_folder_name(project_id, company_code)
                 project_folder_id = create_folder(main_folder_name, PARENT_FOLDER_ID)
                 if not project_folder_id:
-                    return "❌ Failed to create Project folder in Google Drive. Open /authorize first."
+                    return "❌ Failed to create Project folder in Google Drive. Please check OAuth Status and verify PARENT_FOLDER_ID access."
 
                 selected_files = request.files.getlist('project_files')
                 for file in selected_files:
@@ -1903,15 +1933,22 @@ def beneficiary_account():
                 original_name = secure_filename(excel_file.filename)
                 drive_name = f"Beneficiary_Account_{timestamp}_{original_name}"
 
-                excel_file.filename = drive_name
-                uploaded = upload_file(excel_file, PARENT_FOLDER_ID)
+                global drive_service
+                if not drive_service:
+                    drive_service = get_drive_service()
 
-                uploaded_file_info = {
-                    "id": uploaded.get("id"),
-                    "name": uploaded.get("name"),
-                    "webViewLink": uploaded.get("webViewLink")
-                }
-                success = True
+                if not drive_service:
+                    error = "Google Drive OAuth is not connected or parent folder is not accessible. Please check OAuth Status and PARENT_FOLDER_ID access."
+                else:
+                    excel_file.filename = drive_name
+                    uploaded = upload_file(excel_file, PARENT_FOLDER_ID)
+
+                    uploaded_file_info = {
+                        "id": uploaded.get("id"),
+                        "name": uploaded.get("name"),
+                        "webViewLink": uploaded.get("webViewLink")
+                    }
+                    success = True
 
         latest_file, summary = get_beneficiary_summary_from_latest_drive_file()
         files = list_beneficiary_excel_files()
