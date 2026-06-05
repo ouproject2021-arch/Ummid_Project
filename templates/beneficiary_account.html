@@ -33,7 +33,7 @@
 <div class="page-note">
 Upload Beneficiary Excel to the parent Google Drive folder. The latest uploaded file will be used for summary counts.
 <br>
-Expected sheets: <strong>UTTRAKHAND</strong> and <strong>Delhi/NCR</strong>. Expected columns: <strong>Gender</strong>, <strong>District</strong> or <strong>Address</strong>.
+Expected sheets: <strong>UTTRAKHAND</strong> and <strong>Delhi_NCR</strong>. Expected columns: <strong>Gender</strong>, <strong>District</strong> or <strong>Address</strong>.
 </div>
 
 <form method="post" enctype="multipart/form-data">
@@ -58,7 +58,7 @@ Expected sheets: <strong>UTTRAKHAND</strong> and <strong>Delhi/NCR</strong>. Exp
 <div class="summary-grid">
     <div class="summary-card"><strong>{{ summary.total_count }}</strong><span>Total Beneficiary Rows</span></div>
     <div class="summary-card"><strong>{{ summary.sheet_counts.get('UTTRAKHAND', 0) }}</strong><span>UTTRAKHAND</span></div>
-    <div class="summary-card"><strong>{{ summary.sheet_counts.get('Delhi/NCR', 0) }}</strong><span>Delhi/NCR</span></div>
+    <div class="summary-card"><strong>{{ summary.sheet_counts.get('Delhi_NCR', 0) }}</strong><span>Delhi_NCR</span></div>
 </div>
 
 <div class="info-box">
