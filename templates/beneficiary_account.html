@@ -1,0 +1,129 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+<style>
+.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0;}
+.summary-card{background:#f1f8e9;border:1px solid #c8e6c9;border-radius:14px;padding:14px;text-align:center;}
+.summary-card strong{display:block;color:#1b5e20;font-size:24px;}
+.two-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:18px;}
+.info-box{background:#fff;border:1px solid #d9e2dd;border-radius:14px;padding:14px;}
+@media(max-width:800px){.summary-grid,.two-grid{grid-template-columns:1fr;}}
+</style>
+</head><body>
+
+<div class="header">
+    <div style="display:flex; align-items:center;">
+        <img src="{{ url_for('static', filename='logo.png') }}" class="header-logo" alt="Logo" onerror="this.style.display='none'">
+        <strong>Ummid Foundation (Hope for Human)</strong>
+    </div>
+    <div>
+        <a href="/menu">Menu</a>
+        <a href="/projects">Projects</a>
+        <a href="/project-data-entry">Project Data Entry</a>
+        <a href="/records">Records</a>
+        <a href="/export">Download Excel</a>
+        <a href="/oauth-status">OAuth Status</a>
+        <a href="/logout">Logout</a>
+    </div>
+</div>
+
+<div class="container"><div class="form-card" style="max-width:1200px;">
+<h2>Beneficiary Account</h2>
+
+<div class="page-note">
+Upload Beneficiary Excel to the parent Google Drive folder. The latest uploaded file will be used for summary counts.
+<br>
+Expected sheets: <strong>UTTRAKHAND</strong> and <strong>Delhi/NCR</strong>. Expected columns: <strong>Gender</strong>, <strong>District</strong> or <strong>Address</strong>.
+</div>
+
+<form method="post" enctype="multipart/form-data">
+    <div class="form-grid">
+        <div class="form-group full">
+            <label>Upload New Beneficiary Excel Version</label>
+            <input type="file" name="beneficiary_excel" accept=".xls,.xlsx" required>
+        </div>
+    </div>
+    <button type="submit">Upload Beneficiary Excel</button>
+</form>
+
+{% if success %}
+<p class="success">Beneficiary Excel uploaded successfully ✅</p>
+{% endif %}
+
+{% if error %}
+<p class="error">{{ error }}</p>
+{% endif %}
+
+{% if latest_file %}
+<div class="summary-grid">
+    <div class="summary-card"><strong>{{ summary.total_count }}</strong><span>Total Beneficiary Rows</span></div>
+    <div class="summary-card"><strong>{{ summary.sheet_counts.get('UTTRAKHAND', 0) }}</strong><span>UTTRAKHAND</span></div>
+    <div class="summary-card"><strong>{{ summary.sheet_counts.get('Delhi/NCR', 0) }}</strong><span>Delhi/NCR</span></div>
+</div>
+
+<div class="info-box">
+    <h3 style="color:#1b5e20;margin-top:0;">Latest Excel File</h3>
+    <p><strong>{{ latest_file.name }}</strong></p>
+    {% if latest_file.webViewLink %}
+    <a class="menu-button secondary" href="{{ latest_file.webViewLink }}" target="_blank">Open / Download Latest Excel from Google Drive</a>
+    {% endif %}
+</div>
+
+<div class="two-grid">
+    <div class="info-box">
+        <h3 style="color:#1b5e20;margin-top:0;">Gender Count</h3>
+        <div class="table-wrap"><table>
+            <thead><tr><th>Gender</th><th>Count</th></tr></thead>
+            <tbody>
+            {% for name, count in summary.gender_counts.items() %}
+            <tr><td>{{ name }}</td><td>{{ count }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table></div>
+    </div>
+
+    <div class="info-box">
+        <h3 style="color:#1b5e20;margin-top:0;">District / Address Count</h3>
+        <div class="table-wrap"><table>
+            <thead><tr><th>District / Address</th><th>Count</th></tr></thead>
+            <tbody>
+            {% for name, count in summary.district_counts.items() %}
+            <tr><td>{{ name }}</td><td>{{ count }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table></div>
+    </div>
+</div>
+{% else %}
+<p class="error">No Beneficiary Excel file found in parent Google Drive folder.</p>
+{% endif %}
+
+{% if summary.errors %}
+<div class="info-box" style="margin-top:18px;">
+    <h3 style="color:#b71c1c;margin-top:0;">Notes / Warnings</h3>
+    <ul>
+    {% for msg in summary.errors %}
+        <li>{{ msg }}</li>
+    {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<br>
+<h2 style="font-size:22px;">Beneficiary Excel Version History</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>ID</th><th>File Name</th><th>Created</th><th>Modified</th><th>Action</th></tr></thead>
+<tbody>
+{% for file in files %}
+<tr>
+    <td>{{ loop.index }}</td>
+    <td>{{ file.name }}</td>
+    <td>{{ file.createdTime }}</td>
+    <td>{{ file.modifiedTime }}</td>
+    <td>{% if file.webViewLink %}<a class="action-link edit-link" href="{{ file.webViewLink }}" target="_blank">Open</a>{% else %}N/A{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table></div>
+
+</div></div></body></html>
