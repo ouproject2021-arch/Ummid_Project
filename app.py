@@ -1848,7 +1848,7 @@ def analyze_beneficiary_excel_from_bytes(file_bytes):
         summary["errors"].append(f"Unable to read Excel file: {str(e)}")
         return summary
 
-    target_sheets = ["UTTRAKHAND", "Delhi/NCR"]
+    target_sheets = ["UTTRAKHAND", "Delhi_NCR"]
 
     for sheet_name in target_sheets:
         if sheet_name not in workbook:
