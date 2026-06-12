@@ -1835,10 +1835,7 @@ def download_drive_file_bytes(file_id):
 
 def analyze_beneficiary_excel_from_bytes(file_bytes):
     summary = {
-        "total_count": 0,
-        "sheet_counts": {},
-        "gender_counts": {},
-        "district_counts": {},
+        "project_cards": [],
         "errors": []
     }
 
@@ -1848,40 +1845,52 @@ def analyze_beneficiary_excel_from_bytes(file_bytes):
         summary["errors"].append(f"Unable to read Excel file: {str(e)}")
         return summary
 
-    target_sheets = ["UTTRAKHAND", "Delhi_NCR"]
+    target_sheets = ["Uttrakhand", "Delhi_NCR"]
+    required_columns = ["Project Name", "Beneficiary Group Name", "Gender", "District"]
+
+    combined_df = pd.DataFrame()
 
     for sheet_name in target_sheets:
         if sheet_name not in workbook:
-            summary["sheet_counts"][sheet_name] = 0
             summary["errors"].append(f"Sheet not found: {sheet_name}")
             continue
 
         df = workbook[sheet_name].copy()
         df = df.dropna(how="all")
-        row_count = len(df)
 
-        summary["sheet_counts"][sheet_name] = row_count
-        summary["total_count"] += row_count
+        missing_columns = [col for col in required_columns if col not in df.columns]
+        if missing_columns:
+            summary["errors"].append(
+                f"Missing column(s) in sheet {sheet_name}: " + ", ".join(missing_columns)
+            )
+            continue
 
-        if "Gender" in df.columns:
-            gender_series = df["Gender"].fillna("Blank").astype(str).str.strip().replace("", "Blank")
-            for gender, count in gender_series.value_counts().items():
-                summary["gender_counts"][gender] = summary["gender_counts"].get(gender, 0) + int(count)
-        else:
-            summary["errors"].append(f"Gender column not found in sheet: {sheet_name}")
+        df = df[required_columns].copy()
+        df["Source Sheet"] = sheet_name
+        combined_df = pd.concat([combined_df, df], ignore_index=True)
 
-        location_column = None
-        if "District" in df.columns:
-            location_column = "District"
-        elif "Address" in df.columns:
-            location_column = "Address"
+    if combined_df.empty:
+        return summary
 
-        if location_column:
-            location_series = df[location_column].fillna("Blank").astype(str).str.strip().replace("", "Blank")
-            for district, count in location_series.value_counts().items():
-                summary["district_counts"][district] = summary["district_counts"].get(district, 0) + int(count)
-        else:
-            summary["errors"].append(f"District/Address column not found in sheet: {sheet_name}")
+    combined_df["Project Name"] = combined_df["Project Name"].fillna("Blank").astype(str).str.strip().replace("", "Blank")
+    combined_df["Beneficiary Group Name"] = combined_df["Beneficiary Group Name"].fillna("Blank").astype(str).str.strip().replace("", "Blank")
+    combined_df["Gender"] = combined_df["Gender"].fillna("Blank").astype(str).str.strip().replace("", "Blank")
+    combined_df["District"] = combined_df["District"].fillna("Blank").astype(str).str.strip().replace("", "Blank")
+
+    for project_name, project_df in combined_df.groupby("Project Name"):
+        card = {
+            "project_name": project_name,
+            "total_beneficiaries": int(len(project_df)),
+            "beneficiary_groups": project_df["Beneficiary Group Name"].value_counts().to_dict(),
+            "gender_counts": project_df["Gender"].value_counts().to_dict(),
+            "district_counts": project_df["District"].value_counts().to_dict()
+        }
+        summary["project_cards"].append(card)
+
+    summary["project_cards"] = sorted(
+        summary["project_cards"],
+        key=lambda item: item["project_name"]
+    )
 
     return summary
 
@@ -1890,10 +1899,7 @@ def get_beneficiary_summary_from_latest_drive_file():
     latest_file = get_latest_beneficiary_excel_file()
     if not latest_file:
         return None, {
-            "total_count": 0,
-            "sheet_counts": {},
-            "gender_counts": {},
-            "district_counts": {},
+            "project_cards": [],
             "errors": ["No Beneficiary Excel file found in parent Google Drive folder."]
         }
 
@@ -1903,10 +1909,7 @@ def get_beneficiary_summary_from_latest_drive_file():
         return latest_file, summary
     except Exception as e:
         return latest_file, {
-            "total_count": 0,
-            "sheet_counts": {},
-            "gender_counts": {},
-            "district_counts": {},
+            "project_cards": [],
             "errors": [str(e)]
         }
 
