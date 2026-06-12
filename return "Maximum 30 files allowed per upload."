@@ -1477,7 +1477,7 @@ def image_upload():
 
                     selected_files = request.files.getlist(field)
                     if len(selected_files) > 30:
-    return f"Maximum 30 images allowed in {field.replace('_', ' ').title()} upload."
+                       return f"Maximum 30 images allowed in {field.replace('_', ' ').title()} upload."
 
                     for file in selected_files:
 
@@ -1514,7 +1514,7 @@ def image_upload():
 
                 selected_files = request.files.getlist('project_files')
                 if len(selected_files) > 30:
-    return "Maximum 30 files allowed per upload."
+                   return "Maximum 30 files allowed per upload."
                 for file in selected_files:
                     if file and file.filename:
                         uploaded_file = upload_file(file, project_folder_id)
