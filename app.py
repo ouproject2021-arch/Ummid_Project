@@ -49,6 +49,8 @@ app = Flask(
 )
 
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "secret123")
+# Maximum upload size = 200 MB
+app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024
 
 PARENT_FOLDER_ID = os.environ.get("PARENT_FOLDER_ID", "1SzrOrn93f3SDRBmWcYwhrLH3YUeQ-cuy")
 TOKEN_FILE = "token.json"
@@ -1474,6 +1476,8 @@ def image_upload():
                         continue
 
                     selected_files = request.files.getlist(field)
+                    if len(selected_files) > 30:
+    return f"Maximum 30 images allowed in {field.replace('_', ' ').title()} upload."
 
                     for file in selected_files:
 
@@ -1509,6 +1513,8 @@ def image_upload():
                     return "❌ Failed to create Project folder in Google Drive. Please check OAuth Status and verify PARENT_FOLDER_ID access."
 
                 selected_files = request.files.getlist('project_files')
+                if len(selected_files) > 30:
+    return "Maximum 30 files allowed per upload."
                 for file in selected_files:
                     if file and file.filename:
                         uploaded_file = upload_file(file, project_folder_id)
