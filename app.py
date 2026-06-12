@@ -1833,9 +1833,23 @@ def download_drive_file_bytes(file_id):
     return file_bytes
 
 
+def value_counts_as_list(series):
+    counts = series.fillna("Blank").astype(str).str.strip().replace("", "Blank").value_counts()
+    return [{"name": str(name), "count": int(count)} for name, count in counts.items()]
+
+
+def calculate_percent(count, total):
+    try:
+        if not total:
+            return 0
+        return round((int(count) / int(total)) * 100, 1)
+    except Exception:
+        return 0
+
+
 def analyze_beneficiary_excel_from_bytes(file_bytes):
     summary = {
-        "project_cards": [],
+        "sheet_sections": [],
         "errors": []
     }
 
@@ -1847,8 +1861,6 @@ def analyze_beneficiary_excel_from_bytes(file_bytes):
 
     target_sheets = ["Uttrakhand", "Delhi_NCR"]
     required_columns = ["Project Name", "Beneficiary Group Name", "Gender", "District"]
-
-    combined_df = pd.DataFrame()
 
     for sheet_name in target_sheets:
         if sheet_name not in workbook:
@@ -1866,31 +1878,58 @@ def analyze_beneficiary_excel_from_bytes(file_bytes):
             continue
 
         df = df[required_columns].copy()
-        df["Source Sheet"] = sheet_name
-        combined_df = pd.concat([combined_df, df], ignore_index=True)
 
-    if combined_df.empty:
-        return summary
+        df["Project Name"] = df["Project Name"].fillna("Blank").astype(str).str.strip().replace("", "Blank")
+        df["Beneficiary Group Name"] = df["Beneficiary Group Name"].fillna("Blank").astype(str).str.strip().replace("", "Blank")
+        df["Gender"] = df["Gender"].fillna("Blank").astype(str).str.strip().replace("", "Blank")
+        df["District"] = df["District"].fillna("Blank").astype(str).str.strip().replace("", "Blank")
 
-    combined_df["Project Name"] = combined_df["Project Name"].fillna("Blank").astype(str).str.strip().replace("", "Blank")
-    combined_df["Beneficiary Group Name"] = combined_df["Beneficiary Group Name"].fillna("Blank").astype(str).str.strip().replace("", "Blank")
-    combined_df["Gender"] = combined_df["Gender"].fillna("Blank").astype(str).str.strip().replace("", "Blank")
-    combined_df["District"] = combined_df["District"].fillna("Blank").astype(str).str.strip().replace("", "Blank")
+        total_beneficiaries = int(len(df))
+        project_count = int(df["Project Name"].nunique())
+        district_count = int(df["District"].nunique())
+        group_count = int(df["Beneficiary Group Name"].nunique())
 
-    for project_name, project_df in combined_df.groupby("Project Name"):
-        card = {
-            "project_name": project_name,
-            "total_beneficiaries": int(len(project_df)),
-            "beneficiary_groups": project_df["Beneficiary Group Name"].value_counts().to_dict(),
-            "gender_counts": project_df["Gender"].value_counts().to_dict(),
-            "district_counts": project_df["District"].value_counts().to_dict()
-        }
-        summary["project_cards"].append(card)
+        gender_distribution = value_counts_as_list(df["Gender"])
+        district_distribution = value_counts_as_list(df["District"])
 
-    summary["project_cards"] = sorted(
-        summary["project_cards"],
-        key=lambda item: item["project_name"]
-    )
+        for item in gender_distribution:
+            item["percent"] = calculate_percent(item["count"], total_beneficiaries)
+
+        for item in district_distribution:
+            item["percent"] = calculate_percent(item["count"], total_beneficiaries)
+
+        project_cards = []
+
+        for project_name, project_df in df.groupby("Project Name"):
+            beneficiary_groups = value_counts_as_list(project_df["Beneficiary Group Name"])
+            gender_counts = value_counts_as_list(project_df["Gender"])
+            district_counts = value_counts_as_list(project_df["District"])
+
+            card = {
+                "project_name": project_name,
+                "total_beneficiaries": int(len(project_df)),
+                "beneficiary_group_count": int(project_df["Beneficiary Group Name"].nunique()),
+                "district_count": int(project_df["District"].nunique()),
+                "beneficiary_groups": beneficiary_groups,
+                "gender_counts": gender_counts,
+                "district_counts": district_counts
+            }
+
+            project_cards.append(card)
+
+        project_cards = sorted(project_cards, key=lambda item: item["project_name"])
+
+        summary["sheet_sections"].append({
+            "sheet_name": sheet_name,
+            "display_name": "Uttrakhand" if sheet_name == "Uttrakhand" else "Delhi NCR",
+            "total_beneficiaries": total_beneficiaries,
+            "project_count": project_count,
+            "district_count": district_count,
+            "group_count": group_count,
+            "gender_distribution": gender_distribution,
+            "district_distribution": district_distribution,
+            "project_cards": project_cards
+        })
 
     return summary
 
@@ -1899,7 +1938,7 @@ def get_beneficiary_summary_from_latest_drive_file():
     latest_file = get_latest_beneficiary_excel_file()
     if not latest_file:
         return None, {
-            "project_cards": [],
+            "sheet_sections": [],
             "errors": ["No Beneficiary Excel file found in parent Google Drive folder."]
         }
 
@@ -1909,7 +1948,7 @@ def get_beneficiary_summary_from_latest_drive_file():
         return latest_file, summary
     except Exception as e:
         return latest_file, {
-            "project_cards": [],
+            "sheet_sections": [],
             "errors": [str(e)]
         }
 
