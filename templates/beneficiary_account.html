@@ -2,12 +2,17 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <script src="{{ url_for('static', filename='app.js') }}"></script>
 <style>
-.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0;}
-.summary-card{background:#f1f8e9;border:1px solid #c8e6c9;border-radius:14px;padding:14px;text-align:center;}
-.summary-card strong{display:block;color:#1b5e20;font-size:24px;}
-.two-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:18px;}
-.info-box{background:#fff;border:1px solid #d9e2dd;border-radius:14px;padding:14px;}
-@media(max-width:800px){.summary-grid,.two-grid{grid-template-columns:1fr;}}
+.beneficiary-card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;margin-top:22px;}
+.beneficiary-card{background:#ffffff;border:1px solid #d9e2dd;border-radius:18px;padding:18px;box-shadow:0 8px 20px rgba(15,23,42,0.08);}
+.beneficiary-card h3{margin:0 0 12px;color:#1b5e20;font-size:20px;}
+.beneficiary-total{background:#f1f8e9;border:1px solid #c8e6c9;border-radius:14px;padding:12px;text-align:center;margin-bottom:14px;}
+.beneficiary-total strong{display:block;color:#1b5e20;font-size:26px;}
+.card-section{margin-top:14px;}
+.card-section-title{font-weight:bold;color:#1b5e20;margin-bottom:8px;border-bottom:1px solid #e5e7eb;padding-bottom:5px;}
+.count-row{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed #e5e7eb;}
+.count-row span:last-child{font-weight:bold;color:#111827;}
+.file-box{background:#fff;border:1px solid #d9e2dd;border-radius:14px;padding:14px;margin-top:18px;}
+@media(max-width:800px){.beneficiary-card-grid{grid-template-columns:1fr;}}
 </style>
 </head><body>
 
@@ -27,13 +32,13 @@
     </div>
 </div>
 
-<div class="container"><div class="form-card" style="max-width:1200px;">
+<div class="container"><div class="form-card" style="max-width:1300px;">
 <h2>Beneficiary Account</h2>
 
 <div class="page-note">
-Upload Beneficiary Excel to the parent Google Drive folder. The latest uploaded file will be used for summary counts.
+Upload Beneficiary Excel to the parent Google Drive folder. The latest uploaded file will be used to display project-wise beneficiary cards.
 <br>
-Expected sheets: <strong>UTTRAKHAND</strong> and <strong>Delhi_NCR</strong>. Expected columns: <strong>Gender</strong>, <strong>District</strong> or <strong>Address</strong>.
+Expected sheets: <strong>Uttrakhand</strong> and <strong>Delhi_NCR</strong>. Expected columns: <strong>Project Name</strong>, <strong>Beneficiary Group Name</strong>, <strong>Gender</strong>, <strong>District</strong>.
 </div>
 
 <form method="post" enctype="multipart/form-data">
@@ -55,13 +60,7 @@ Expected sheets: <strong>UTTRAKHAND</strong> and <strong>Delhi_NCR</strong>. Exp
 {% endif %}
 
 {% if latest_file %}
-<div class="summary-grid">
-    <div class="summary-card"><strong>{{ summary.total_count }}</strong><span>Total Beneficiary Rows</span></div>
-    <div class="summary-card"><strong>{{ summary.sheet_counts.get('UTTRAKHAND', 0) }}</strong><span>UTTRAKHAND</span></div>
-    <div class="summary-card"><strong>{{ summary.sheet_counts.get('Delhi_NCR', 0) }}</strong><span>Delhi_NCR</span></div>
-</div>
-
-<div class="info-box">
+<div class="file-box">
     <h3 style="color:#1b5e20;margin-top:0;">Latest Excel File</h3>
     <p><strong>{{ latest_file.name }}</strong></p>
     {% if latest_file.webViewLink %}
@@ -69,37 +68,50 @@ Expected sheets: <strong>UTTRAKHAND</strong> and <strong>Delhi_NCR</strong>. Exp
     {% endif %}
 </div>
 
-<div class="two-grid">
-    <div class="info-box">
-        <h3 style="color:#1b5e20;margin-top:0;">Gender Count</h3>
-        <div class="table-wrap"><table>
-            <thead><tr><th>Gender</th><th>Count</th></tr></thead>
-            <tbody>
-            {% for name, count in summary.gender_counts.items() %}
-            <tr><td>{{ name }}</td><td>{{ count }}</td></tr>
-            {% endfor %}
-            </tbody>
-        </table></div>
-    </div>
+{% if summary.project_cards %}
+<div class="beneficiary-card-grid">
+{% for card in summary.project_cards %}
+    <div class="beneficiary-card">
+        <h3>{{ card.project_name }}</h3>
 
-    <div class="info-box">
-        <h3 style="color:#1b5e20;margin-top:0;">District / Address Count</h3>
-        <div class="table-wrap"><table>
-            <thead><tr><th>District / Address</th><th>Count</th></tr></thead>
-            <tbody>
-            {% for name, count in summary.district_counts.items() %}
-            <tr><td>{{ name }}</td><td>{{ count }}</td></tr>
+        <div class="beneficiary-total">
+            <strong>{{ card.total_beneficiaries }}</strong>
+            <span>Total Beneficiaries</span>
+        </div>
+
+        <div class="card-section">
+            <div class="card-section-title">Beneficiary Group</div>
+            {% for name, count in card.beneficiary_groups.items() %}
+            <div class="count-row"><span>{{ name }}</span><span>{{ count }}</span></div>
             {% endfor %}
-            </tbody>
-        </table></div>
+        </div>
+
+        <div class="card-section">
+            <div class="card-section-title">Gender</div>
+            {% for name, count in card.gender_counts.items() %}
+            <div class="count-row"><span>{{ name }}</span><span>{{ count }}</span></div>
+            {% endfor %}
+        </div>
+
+        <div class="card-section">
+            <div class="card-section-title">District</div>
+            {% for name, count in card.district_counts.items() %}
+            <div class="count-row"><span>{{ name }}</span><span>{{ count }}</span></div>
+            {% endfor %}
+        </div>
     </div>
+{% endfor %}
 </div>
+{% else %}
+<p class="error">No project-wise beneficiary data found in the latest Excel file.</p>
+{% endif %}
+
 {% else %}
 <p class="error">No Beneficiary Excel file found in parent Google Drive folder.</p>
 {% endif %}
 
 {% if summary.errors %}
-<div class="info-box" style="margin-top:18px;">
+<div class="file-box">
     <h3 style="color:#b71c1c;margin-top:0;">Notes / Warnings</h3>
     <ul>
     {% for msg in summary.errors %}
