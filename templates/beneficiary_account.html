@@ -2,17 +2,42 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <script src="{{ url_for('static', filename='app.js') }}"></script>
 <style>
-.beneficiary-card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;margin-top:22px;}
-.beneficiary-card{background:#ffffff;border:1px solid #d9e2dd;border-radius:18px;padding:18px;box-shadow:0 8px 20px rgba(15,23,42,0.08);}
-.beneficiary-card h3{margin:0 0 12px;color:#1b5e20;font-size:20px;}
-.beneficiary-total{background:#f1f8e9;border:1px solid #c8e6c9;border-radius:14px;padding:12px;text-align:center;margin-bottom:14px;}
-.beneficiary-total strong{display:block;color:#1b5e20;font-size:26px;}
-.card-section{margin-top:14px;}
-.card-section-title{font-weight:bold;color:#1b5e20;margin-bottom:8px;border-bottom:1px solid #e5e7eb;padding-bottom:5px;}
+.beneficiary-hero{background:linear-gradient(135deg,#f1f8e9,#ffffff);border:1px solid #d9e2dd;border-radius:18px;padding:18px;margin-bottom:18px;}
+.upload-panel{background:#ffffff;border:1px solid #d9e2dd;border-radius:16px;padding:16px;margin-top:14px;}
+.file-box{background:#ffffff;border:1px solid #d9e2dd;border-radius:16px;padding:16px;margin-top:18px;}
+.sheet-section{margin-top:26px;border-top:3px solid #2e7d32;padding-top:20px;}
+.sheet-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;}
+.sheet-header h2{margin:0;color:#1b5e20;font-size:26px;}
+.sheet-badge{background:#e8f5e9;color:#1b5e20;border:1px solid #c8e6c9;border-radius:999px;padding:6px 12px;font-weight:bold;}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:16px 0;}
+.kpi-card{background:#ffffff;border:1px solid #d9e2dd;border-radius:16px;padding:16px;text-align:center;box-shadow:0 6px 16px rgba(15,23,42,0.06);}
+.kpi-card strong{display:block;color:#1b5e20;font-size:28px;line-height:1.1;}
+.kpi-card span{font-size:13px;color:#4b5563;}
+.project-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:16px;margin-top:16px;}
+.project-card{background:#ffffff;border:1px solid #d9e2dd;border-radius:18px;padding:16px;box-shadow:0 8px 20px rgba(15,23,42,0.08);}
+.project-card h3{margin:0 0 10px;color:#1b5e20;font-size:19px;}
+.card-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0;}
+.metric-box{background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:10px;text-align:center;}
+.metric-box strong{display:block;color:#111827;font-size:20px;}
+.details-toggle{display:none;}
+.details-button{display:inline-block;width:100%;text-align:center;background:#2e7d32;color:#fff;border-radius:12px;padding:10px 12px;margin-top:8px;cursor:pointer;font-weight:bold;}
+.details-content{display:none;margin-top:12px;border-top:1px solid #e5e7eb;padding-top:12px;}
+.details-toggle:checked + .details-button + .details-content{display:block;}
+.card-section{margin-top:12px;}
+.card-section-title{font-weight:bold;color:#1b5e20;margin-bottom:8px;}
 .count-row{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed #e5e7eb;}
-.count-row span:last-child{font-weight:bold;color:#111827;}
-.file-box{background:#fff;border:1px solid #d9e2dd;border-radius:14px;padding:14px;margin-top:18px;}
-@media(max-width:800px){.beneficiary-card-grid{grid-template-columns:1fr;}}
+.count-row span:last-child{font-weight:bold;}
+.chart-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:20px;}
+.chart-card{background:#ffffff;border:1px solid #d9e2dd;border-radius:18px;padding:16px;box-shadow:0 8px 20px rgba(15,23,42,0.08);}
+.chart-card h3{margin:0 0 12px;color:#1b5e20;}
+.bar-row{display:grid;grid-template-columns:130px 1fr 60px;gap:10px;align-items:center;margin:10px 0;}
+.bar-label{font-size:13px;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bar-track{height:12px;background:#eef2f7;border-radius:999px;overflow:hidden;}
+.bar-fill{height:100%;background:#2e7d32;border-radius:999px;}
+.bar-value{text-align:right;font-weight:bold;font-size:13px;color:#111827;}
+.empty-note{background:#fff3cd;border:1px solid #ffeeba;border-radius:12px;padding:12px;margin-top:12px;color:#856404;}
+@media(max-width:900px){.kpi-grid,.chart-grid{grid-template-columns:1fr 1fr;}.bar-row{grid-template-columns:100px 1fr 48px;}}
+@media(max-width:650px){.kpi-grid,.chart-grid,.card-metrics{grid-template-columns:1fr;}.sheet-header{flex-direction:column;align-items:flex-start;}}
 </style>
 </head><body>
 
@@ -32,32 +57,30 @@
     </div>
 </div>
 
-<div class="container"><div class="form-card" style="max-width:1300px;">
-<h2>Beneficiary Account</h2>
-
-<div class="page-note">
-Upload Beneficiary Excel to the parent Google Drive folder. The latest uploaded file will be used to display project-wise beneficiary cards.
-<br>
-Expected sheets: <strong>Uttrakhand</strong> and <strong>Delhi_NCR</strong>. Expected columns: <strong>Project Name</strong>, <strong>Beneficiary Group Name</strong>, <strong>Gender</strong>, <strong>District</strong>.
-</div>
-
-<form method="post" enctype="multipart/form-data">
-    <div class="form-grid">
-        <div class="form-group full">
-            <label>Upload New Beneficiary Excel Version</label>
-            <input type="file" name="beneficiary_excel" accept=".xls,.xlsx" required>
-        </div>
+<div class="container"><div class="form-card" style="max-width:1400px;">
+<div class="beneficiary-hero">
+    <h2 style="margin-top:0;">Beneficiary Account Dashboard</h2>
+    <div class="page-note" style="margin-bottom:0;">
+        Upload Beneficiary Excel to the parent Google Drive folder. The latest uploaded file will be used to display sheet-wise CSR beneficiary dashboard.
+        <br>
+        Expected sheets: <strong>Uttrakhand</strong> and <strong>Delhi_NCR</strong>. Expected columns: <strong>Project Name</strong>, <strong>Beneficiary Group Name</strong>, <strong>Gender</strong>, <strong>District</strong>.
     </div>
-    <button type="submit">Upload Beneficiary Excel</button>
-</form>
 
-{% if success %}
-<p class="success">Beneficiary Excel uploaded successfully ✅</p>
-{% endif %}
+    <div class="upload-panel">
+        <form method="post" enctype="multipart/form-data">
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Upload New Beneficiary Excel Version</label>
+                    <input type="file" name="beneficiary_excel" accept=".xls,.xlsx" required>
+                </div>
+            </div>
+            <button type="submit">Upload Beneficiary Excel</button>
+        </form>
 
-{% if error %}
-<p class="error">{{ error }}</p>
-{% endif %}
+        {% if success %}<p class="success">Beneficiary Excel uploaded successfully ✅</p>{% endif %}
+        {% if error %}<p class="error">{{ error }}</p>{% endif %}
+    </div>
+</div>
 
 {% if latest_file %}
 <div class="file-box">
@@ -68,42 +91,93 @@ Expected sheets: <strong>Uttrakhand</strong> and <strong>Delhi_NCR</strong>. Exp
     {% endif %}
 </div>
 
-{% if summary.project_cards %}
-<div class="beneficiary-card-grid">
-{% for card in summary.project_cards %}
-    <div class="beneficiary-card">
-        <h3>{{ card.project_name }}</h3>
+{% if summary.sheet_sections %}
+{% for section in summary.sheet_sections %}
+<div class="sheet-section">
+    <div class="sheet-header">
+        <h2>{{ section.display_name }}</h2>
+        <span class="sheet-badge">Sheet: {{ section.sheet_name }}</span>
+    </div>
 
-        <div class="beneficiary-total">
-            <strong>{{ card.total_beneficiaries }}</strong>
-            <span>Total Beneficiaries</span>
+    <div class="kpi-grid">
+        <div class="kpi-card"><strong>{{ section.project_count }}</strong><span>Projects</span></div>
+        <div class="kpi-card"><strong>{{ section.total_beneficiaries }}</strong><span>Beneficiaries</span></div>
+        <div class="kpi-card"><strong>{{ section.district_count }}</strong><span>Districts Covered</span></div>
+        <div class="kpi-card"><strong>{{ section.group_count }}</strong><span>Beneficiary Groups</span></div>
+    </div>
+
+    <h3 style="color:#1b5e20;margin-top:22px;">Project Cards</h3>
+    {% if section.project_cards %}
+    <div class="project-grid">
+    {% for card in section.project_cards %}
+        <div class="project-card">
+            <h3>{{ card.project_name }}</h3>
+
+            <div class="card-metrics">
+                <div class="metric-box"><strong>{{ card.total_beneficiaries }}</strong><span>Total</span></div>
+                <div class="metric-box"><strong>{{ card.beneficiary_group_count }}</strong><span>Groups</span></div>
+                <div class="metric-box"><strong>{{ card.district_count }}</strong><span>Districts</span></div>
+            </div>
+
+            <input type="checkbox" class="details-toggle" id="details_{{ section.sheet_name }}_{{ loop.index }}">
+            <label class="details-button" for="details_{{ section.sheet_name }}_{{ loop.index }}">View Details</label>
+
+            <div class="details-content">
+                <div class="card-section">
+                    <div class="card-section-title">Beneficiary Group</div>
+                    {% for item in card.beneficiary_groups %}
+                    <div class="count-row"><span>{{ item.name }}</span><span>{{ item.count }}</span></div>
+                    {% endfor %}
+                </div>
+
+                <div class="card-section">
+                    <div class="card-section-title">Gender</div>
+                    {% for item in card.gender_counts %}
+                    <div class="count-row"><span>{{ item.name }}</span><span>{{ item.count }}</span></div>
+                    {% endfor %}
+                </div>
+
+                <div class="card-section">
+                    <div class="card-section-title">District</div>
+                    {% for item in card.district_counts %}
+                    <div class="count-row"><span>{{ item.name }}</span><span>{{ item.count }}</span></div>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
+    {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-note">No project data found for this sheet.</div>
+    {% endif %}
 
-        <div class="card-section">
-            <div class="card-section-title">Beneficiary Group</div>
-            {% for name, count in card.beneficiary_groups.items() %}
-            <div class="count-row"><span>{{ name }}</span><span>{{ count }}</span></div>
+    <div class="chart-grid">
+        <div class="chart-card">
+            <h3>Gender Distribution</h3>
+            {% for item in section.gender_distribution %}
+            <div class="bar-row">
+                <div class="bar-label" title="{{ item.name }}">{{ item.name }}</div>
+                <div class="bar-track"><div class="bar-fill" style="width:{{ item.percent }}%;"></div></div>
+                <div class="bar-value">{{ item.count }}</div>
+            </div>
             {% endfor %}
         </div>
 
-        <div class="card-section">
-            <div class="card-section-title">Gender</div>
-            {% for name, count in card.gender_counts.items() %}
-            <div class="count-row"><span>{{ name }}</span><span>{{ count }}</span></div>
-            {% endfor %}
-        </div>
-
-        <div class="card-section">
-            <div class="card-section-title">District</div>
-            {% for name, count in card.district_counts.items() %}
-            <div class="count-row"><span>{{ name }}</span><span>{{ count }}</span></div>
+        <div class="chart-card">
+            <h3>District Distribution</h3>
+            {% for item in section.district_distribution %}
+            <div class="bar-row">
+                <div class="bar-label" title="{{ item.name }}">{{ item.name }}</div>
+                <div class="bar-track"><div class="bar-fill" style="width:{{ item.percent }}%;"></div></div>
+                <div class="bar-value">{{ item.count }}</div>
+            </div>
             {% endfor %}
         </div>
     </div>
-{% endfor %}
 </div>
+{% endfor %}
 {% else %}
-<p class="error">No project-wise beneficiary data found in the latest Excel file.</p>
+<p class="error">No beneficiary dashboard data found in the latest Excel file.</p>
 {% endif %}
 
 {% else %}
