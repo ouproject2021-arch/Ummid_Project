@@ -40,23 +40,29 @@ function fetchProjectInfo(){
 
 function validateSchoolCode(){
     var schoolCodeInput = document.getElementById('school_code');
+    var projectIdInput = document.getElementById('project_id');
     var submitButton = document.getElementById('save_school_button');
 
-    if (!schoolCodeInput) return;
+    if (!schoolCodeInput || !projectIdInput) return;
 
     var schoolCode = schoolCodeInput.value.trim();
+    var projectId = projectIdInput.value.trim();
 
     if (submitButton) {
         submitButton.disabled = false;
     }
 
-    if (!schoolCode) return;
+    if (!schoolCode || !projectId) return;
 
-    fetch('/check-school-code/' + encodeURIComponent(schoolCode))
+    fetch(
+        '/check-school-code/' + encodeURIComponent(schoolCode) +
+        '?project_id=' + encodeURIComponent(projectId),
+        {cache: 'no-store'}
+    )
         .then(function(response){ return response.json(); })
         .then(function(data){
             if(data.exists){
-                alert('Duplicate School Code detected. Please enter a unique School Code.');
+                alert('Duplicate School Code detected for the selected Project ID. Please enter a unique School Code.');
                 schoolCodeInput.value = '';
                 schoolCodeInput.focus();
 
