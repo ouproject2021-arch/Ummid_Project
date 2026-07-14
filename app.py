@@ -496,20 +496,45 @@ def delete_project_info_record(record_id):
     cur.close()
     conn.close()
 
-def school_code_exists(school_code, exclude_id=None):
+def school_code_exists(school_code, project_id, exclude_id=None):
+    """
+    School Code must be unique within the selected Project ID.
+    The same School Code may be used under a different Project ID.
+    """
     init_db()
     conn = get_db_connection()
     cur = conn.cursor()
 
+    normalized_school_code = (school_code or "").strip()
+    normalized_project_id = (project_id or "").strip()
+
+    if not normalized_school_code or not normalized_project_id:
+        cur.close()
+        conn.close()
+        return False
+
     if exclude_id:
         cur.execute(
-            "SELECT 1 FROM school_records WHERE school_code = %s AND id != %s LIMIT 1",
-            (school_code, exclude_id)
+            """
+            SELECT 1
+            FROM school_records
+            WHERE UPPER(TRIM(school_code)) = UPPER(TRIM(%s))
+              AND UPPER(TRIM(project_id)) = UPPER(TRIM(%s))
+              AND id != %s
+            LIMIT 1
+            """,
+            (normalized_school_code, normalized_project_id, exclude_id)
         )
     else:
         cur.execute(
-            "SELECT 1 FROM school_records WHERE school_code = %s LIMIT 1",
-            (school_code,)
+            """
+            SELECT 1
+            FROM school_records
+            WHERE UPPER(TRIM(school_code)) = UPPER(TRIM(%s))
+              AND UPPER(TRIM(project_id)) = UPPER(TRIM(%s))
+            LIMIT 1
+            """,
+            (normalized_school_code, normalized_project_id)
         )
 
     exists = cur.fetchone() is not None
@@ -541,7 +566,7 @@ def get_school_record_by_id(record_id):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
         SELECT id, udisc_number, school_code, school_name, location, year, girls, boys,
-               total_students, company_name, fy, phase, remarks, project_slug, created_at
+               total_students, company_name, fy, phase, remarks, project_slug, project_id, created_at
         FROM school_records
         WHERE id = %s
     """, (record_id,))
@@ -1079,8 +1104,10 @@ def add_drive_folder_links_to_records(records):
         record_dict["drive_folder_link"] = None
         if udisc_number and school_code:
             if project_slug == "education":
-                project = get_project_master("education")
-                project_id = (project or {}).get("project_id") or ""
+                project_id = (record_dict.get("project_id") or "").strip()
+                if not project_id:
+                    project = get_project_master("education")
+                    project_id = (project or {}).get("project_id") or ""
                 if project_id:
                     folder_name = build_education_drive_folder_name(project_id, udisc_number, school_code)
                     record_dict["drive_folder_link"] = get_drive_folder_link_by_name(folder_name, PARENT_FOLDER_ID)
@@ -1369,8 +1396,13 @@ def school_entry():
             if not school_code:
                 return "School code is required"
 
-            if school_code_exists(school_code):
-                return "<script>alert('Duplicate School Code detected. Please enter a unique School Code.');window.history.back();</script>"
+            project_id = request.form.get('project_id', '').strip()
+
+            if not project_id:
+                return "Project ID is required"
+
+            if school_code_exists(school_code, project_id):
+                return "<script>alert('Duplicate School Code detected for the selected Project ID. Please enter a unique School Code.');window.history.back();</script>"
 
             if not school_name:
                 return "School name is required"
@@ -1387,7 +1419,7 @@ def school_entry():
                 "Total Students": boys + girls,
                 "Company Name": request.form.get('company', ''),
                 "Company Code": request.form.get('company_code', ''),
-                "Project ID": request.form.get('project_id', ''),
+                "Project ID": project_id,
                 "Project Cost": request.form.get('project_cost', ''),
                 "FY": request.form.get('fy', ''),
                 "Phase": request.form.get('phase', ''),
@@ -1437,12 +1469,13 @@ def check_school_code(school_code):
         return {"exists": False}
 
     try:
-        school_code = school_code.strip()
+        school_code = (school_code or "").strip()
+        project_id = (request.args.get('project_id') or "").strip()
 
-        if not school_code:
+        if not school_code or not project_id:
             return {"exists": False}
 
-        exists = school_code_exists(school_code)
+        exists = school_code_exists(school_code, project_id)
         return {"exists": exists}
 
     except Exception as e:
@@ -1603,8 +1636,10 @@ def edit_record(record_id):
             if not school_code:
                 return "School code is required"
 
-            if school_code_exists(school_code, record_id):
-                return "<script>alert('Duplicate School Code detected. Please enter a unique School Code.');window.history.back();</script>"
+            record_project_id = (record.get("project_id") or "").strip()
+
+            if school_code_exists(school_code, record_project_id, record_id):
+                return "<script>alert('Duplicate School Code detected for the selected Project ID. Please enter a unique School Code.');window.history.back();</script>"
 
             if not school_name:
                 return "School name is required"
