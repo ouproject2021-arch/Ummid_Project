@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>
+.report-layout{display:grid;grid-template-columns:330px 1fr;gap:18px;}
+.record-list{background:#fff;border:1px solid #d9e2dd;border-radius:14px;padding:12px;}
+.record-item{display:block;padding:10px;border-bottom:1px solid #e5e7eb;text-decoration:none;color:#173f7a;}
+.record-item:hover{background:#f3f7fb;}
+.report-card{background:#fff;border:1px solid #d9e2dd;border-radius:16px;padding:18px;margin-bottom:16px;}
+.report-card h3{color:#173f7a;margin-top:0;border-bottom:2px solid #dbe6f5;padding-bottom:8px;}
+.report-table{width:100%;border-collapse:collapse;}
+.report-table th,.report-table td{border:1px solid #d5dce5;padding:8px;text-align:left;}
+.report-table th{background:#e8eff8;}
+.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.summary-box{background:#eef5fd;border:1px solid #d5e3f4;border-radius:12px;padding:12px;text-align:center;}
+.summary-box strong{display:block;font-size:24px;color:#173f7a;}
+@media(max-width:900px){.report-layout{grid-template-columns:1fr;}.summary-grid{grid-template-columns:1fr 1fr;}}
+@media print{.header,.record-list,.no-print{display:none!important}.report-layout{display:block}.form-card{box-shadow:none;border:none}}
+</style>
+</head>
+<body>
+<div class="header">
+<div style="display:flex;align-items:center;">
+<img src="{{ url_for('static', filename='logo.png') }}" class="header-logo" alt="Logo" onerror="this.style.display='none'">
+<strong>Ummid Foundation (Hope for Human)</strong>
+</div>
+<div><a href="/menu">Menu</a><a href="/baseline-assessment">New Assessment</a><a href="/logout">Logout</a></div>
+</div>
+
+<div class="container"><div class="form-card" style="max-width:1500px;">
+<h2>Baseline Assessment Reports</h2>
+<div class="report-layout">
+<div class="record-list">
+<h3 style="color:#173f7a;">Saved Assessments</h3>
+{% for row in records %}
+<a class="record-item" href="/baseline-assessment-report?id={{ row.id }}">
+<strong>{{ row.school_name }}</strong><br>
+<small>{{ row.project_id }} | {{ row.survey_date or 'No survey date' }}</small>
+</a>
+{% endfor %}
+</div>
+
+<div>
+{% if selected_record %}
+<div class="report-card">
+<div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+<div>
+<h2 style="margin:0;color:#173f7a;">BASELINE ASSESSMENT</h2>
+<p><strong>{{ selected_record.project_title }}</strong><br>{{ selected_record.company_name }}</p>
+</div>
+<button class="no-print" onclick="window.print()">Print Report</button>
+</div>
+</div>
+
+<div class="report-card">
+<h3>A. General Information</h3>
+<table class="report-table">
+<tr><th>Name of School</th><td>{{ selected_record.school_name }}</td></tr>
+<tr><th>UDISE Code / Year of Establishment</th><td>{{ selected_record.udise_code }} / {{ selected_record.year_of_establishment }}</td></tr>
+<tr><th>Complete School Address</th><td>{{ selected_record.school_address }}</td></tr>
+<tr><th>Date of Survey</th><td>{{ selected_record.survey_date }}</td></tr>
+<tr><th>Survey Conducted By</th><td>{{ selected_record.survey_conducted_by }}</td></tr>
+</table>
+</div>
+
+<div class="report-card">
+<h3>B. Beneficiary Details</h3>
+<div class="summary-grid">
+<div class="summary-box"><strong>{{ selected_record.total_students }}</strong>Total Students</div>
+<div class="summary-box"><strong>{{ selected_record.boys }}</strong>Boys</div>
+<div class="summary-box"><strong>{{ selected_record.girls }}</strong>Girls</div>
+<div class="summary-box"><strong>{{ selected_record.total_staff }}</strong>Total Staff</div>
+</div>
+<table class="report-table" style="margin-top:12px;">
+<tr><th>Students with Disabilities</th><td>{{ selected_record.students_with_disabilities }}</td></tr>
+</table>
+</div>
+
+{% set section_titles = {
+'digital_learning':'Digital Learning Facilities',
+'learning_environment':'Learning Environment',
+'building_condition':'Building Condition',
+'toilet_facilities':'Toilet Facilities',
+'drinking_water':'Drinking Water Facility',
+'menstrual_hygiene':'Menstrual Hygiene Facility',
+'photographic_documentation':'D. Photographic Documentation'
+} %}
+
+{% for section_name, fields in baseline_sections.items() %}
+<div class="report-card">
+<h3>{% if section_name != 'photographic_documentation' %}C. {% endif %}{{ section_titles[section_name] }}</h3>
+<table class="report-table">
+<thead><tr><th>Parameter</th><th>Status</th><th>Remarks</th></tr></thead>
+<tbody>
+{% set stored_section = selected_record[section_name] or {} %}
+{% for field_key, label in fields %}
+{% set item = stored_section.get(field_key, {}) %}
+<tr><td>{{ label }}</td><td>{{ item.get('status','') }}</td><td>{{ item.get('remarks','') }}</td></tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% endfor %}
+
+<div class="report-card">
+<h3>Sign-off and Undertaking</h3>
+<table class="report-table">
+<tr><th>Principal / In-charge</th><td>{{ selected_record.principal_name }}</td></tr>
+<tr><th>Surveyor</th><td>{{ selected_record.surveyor_name }}</td></tr>
+<tr><th>Undertaking Accepted</th><td>{{ 'Yes' if selected_record.undertaking_accepted else 'No' }}</td></tr>
+<tr><th>General Remarks</th><td>{{ selected_record.general_remarks }}</td></tr>
+</table>
+<form method="post" action="/delete-baseline-assessment/{{ selected_record.id }}" class="no-print" onsubmit="return confirm('Delete this baseline assessment?');" style="margin-top:12px;">
+<button type="submit" style="background:#b71c1c;">Delete Assessment</button>
+</form>
+</div>
+
+{% else %}
+<div class="report-card"><p>Select a saved assessment from the left panel to view the complete report.</p></div>
+{% endif %}
+</div>
+</div>
+</div></div>
+</body></html>

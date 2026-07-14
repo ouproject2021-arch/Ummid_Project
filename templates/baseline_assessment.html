@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+<style>
+.assessment-card{background:#fff;border:1px solid #d9e2dd;border-radius:16px;padding:18px;margin-bottom:18px;}
+.assessment-card h3{margin-top:0;color:#173f7a;border-bottom:2px solid #dbe6f5;padding-bottom:8px;}
+.assessment-table{width:100%;border-collapse:collapse;}
+.assessment-table th,.assessment-table td{border:1px solid #d5dce5;padding:9px;vertical-align:middle;}
+.assessment-table th{background:#e8eff8;color:#173f7a;}
+.status-select{min-width:105px;}
+@media(max-width:700px){.assessment-table{font-size:13px;}.assessment-table th,.assessment-table td{padding:6px;}}
+</style>
+<script>
+function fetchBaselineProjectInfo(){
+    var projectId = document.getElementById('project_id').value;
+    if(!projectId) return;
+    fetch('/get-project-info/' + encodeURIComponent(projectId), {cache:'no-store'})
+        .then(function(response){ return response.json(); })
+        .then(function(data){
+            if(data.found){
+                document.getElementById('project_title').value = data.project_title || '';
+                document.getElementById('company_name').value = data.company_name || '';
+            }
+        });
+}
+function calculateStudents(){
+    var boys = parseInt(document.getElementById('boys').value) || 0;
+    var girls = parseInt(document.getElementById('girls').value) || 0;
+    document.getElementById('total_students').value = boys + girls;
+}
+</script>
+</head>
+<body>
+<div class="header">
+    <div style="display:flex;align-items:center;">
+        <img src="{{ url_for('static', filename='logo.png') }}" class="header-logo" alt="Logo" onerror="this.style.display='none'">
+        <strong>Ummid Foundation (Hope for Human)</strong>
+    </div>
+    <div>
+        <a href="/menu">Menu</a>
+        <a href="/baseline-assessment-report">Baseline Reports</a>
+        <a href="/logout">Logout</a>
+    </div>
+</div>
+
+<div class="container"><div class="form-card" style="max-width:1350px;">
+<h2>Baseline Assessment</h2>
+<div class="page-note">Structured data-entry form based on the Baseline Assessment document.</div>
+
+<form method="post">
+<div class="assessment-card">
+<h3>A. Project and General Information</h3>
+<div class="form-grid">
+<div class="form-group"><label>Project ID</label>
+<select id="project_id" name="project_id" onchange="fetchBaselineProjectInfo()">
+<option value="">Select Project ID</option>
+{% for item in project_ids %}<option value="{{ item.project_id }}">{{ item.project_id }}</option>{% endfor %}
+</select></div>
+<div class="form-group"><label>Project Title</label><input id="project_title" name="project_title" readonly></div>
+<div class="form-group full"><label>Company Name</label><input id="company_name" name="company_name" readonly></div>
+<div class="form-group"><label>Name of School</label><input name="school_name" required></div>
+<div class="form-group"><label>UDISE Code</label><input name="udise_code"></div>
+<div class="form-group"><label>Year of Establishment</label><input name="year_of_establishment"></div>
+<div class="form-group full"><label>Complete School Address</label><textarea name="school_address"></textarea></div>
+<div class="form-group"><label>Date of Survey</label><input type="date" name="survey_date"></div>
+<div class="form-group"><label>Survey Conducted By</label><input name="survey_conducted_by"></div>
+</div>
+</div>
+
+<div class="assessment-card">
+<h3>B. Beneficiary Details</h3>
+<div class="form-grid">
+<div class="form-group"><label>Boys</label><input id="boys" name="boys" type="number" min="0" oninput="calculateStudents()"></div>
+<div class="form-group"><label>Girls</label><input id="girls" name="girls" type="number" min="0" oninput="calculateStudents()"></div>
+<div class="form-group"><label>Total Student Enrolled</label><input id="total_students" name="total_students" type="number" min="0" readonly></div>
+<div class="form-group"><label>Students with Disabilities</label><input name="students_with_disabilities" type="number" min="0"></div>
+<div class="form-group"><label>Total Staff</label><input name="total_staff" type="number" min="0"></div>
+</div>
+</div>
+
+{% set section_titles = {
+'digital_learning':'Digital Learning Facilities',
+'learning_environment':'Learning Environment',
+'building_condition':'Building Condition',
+'toilet_facilities':'Toilet Facilities',
+'drinking_water':'Drinking Water Facility',
+'menstrual_hygiene':'Menstrual Hygiene Facility',
+'photographic_documentation':'D. Photographic Documentation'
+} %}
+
+{% for section_name, fields in baseline_sections.items() %}
+<div class="assessment-card">
+<h3>{% if section_name != 'photographic_documentation' %}C. {% endif %}{{ section_titles[section_name] }}</h3>
+<table class="assessment-table">
+<thead><tr><th>Parameter</th><th>Status</th><th>Remarks</th></tr></thead>
+<tbody>
+{% for field_key, label in fields %}
+<tr>
+<td>{{ label }}</td>
+<td>
+<select class="status-select" name="{{ section_name }}_{{ field_key }}_status">
+<option value="">Select</option>
+<option value="Yes">Yes</option>
+<option value="No">No</option>
+{% if section_name == 'photographic_documentation' %}<option value="Attached">Attached</option><option value="Not Attached">Not Attached</option>{% endif %}
+</select>
+</td>
+<td><input name="{{ section_name }}_{{ field_key }}_remarks"></td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% endfor %}
+
+<div class="assessment-card">
+<h3>Sign-off and Undertaking</h3>
+<div class="form-grid">
+<div class="form-group"><label>Principal / In-charge Name</label><input name="principal_name"></div>
+<div class="form-group"><label>Surveyor Name</label><input name="surveyor_name"></div>
+<div class="form-group full"><label>General Remarks</label><textarea name="general_remarks"></textarea></div>
+<div class="form-group full">
+<label><input type="checkbox" name="undertaking_accepted" value="yes"> School Management / Principal accepts the maintenance, documentation and cooperation undertaking.</label>
+</div>
+</div>
+</div>
+
+<button type="submit">Save Baseline Assessment</button>
+</form>
+
+{% if success %}
+<p class="success">Baseline Assessment saved successfully ✅ 
+<a href="/baseline-assessment-report?id={{ saved_record_id }}">View Full Report</a></p>
+{% endif %}
+</div></div>
+</body></html>
