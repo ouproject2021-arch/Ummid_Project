@@ -173,6 +173,39 @@ def init_db():
         )
     """)
 
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS baseline_assessments (
+            id SERIAL PRIMARY KEY,
+            project_id TEXT,
+            project_title TEXT,
+            company_name TEXT,
+            school_name TEXT NOT NULL,
+            udise_code TEXT,
+            year_of_establishment TEXT,
+            school_address TEXT,
+            survey_date TEXT,
+            survey_conducted_by TEXT,
+            total_students INTEGER DEFAULT 0,
+            boys INTEGER DEFAULT 0,
+            girls INTEGER DEFAULT 0,
+            students_with_disabilities INTEGER DEFAULT 0,
+            total_staff INTEGER DEFAULT 0,
+            digital_learning JSONB DEFAULT '{}'::jsonb,
+            learning_environment JSONB DEFAULT '{}'::jsonb,
+            building_condition JSONB DEFAULT '{}'::jsonb,
+            toilet_facilities JSONB DEFAULT '{}'::jsonb,
+            drinking_water JSONB DEFAULT '{}'::jsonb,
+            menstrual_hygiene JSONB DEFAULT '{}'::jsonb,
+            photographic_documentation JSONB DEFAULT '{}'::jsonb,
+            principal_name TEXT,
+            surveyor_name TEXT,
+            undertaking_accepted BOOLEAN DEFAULT FALSE,
+            general_remarks TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     cur.execute("ALTER TABLE school_records ADD COLUMN IF NOT EXISTS school_code TEXT")
     cur.execute("ALTER TABLE school_records ADD COLUMN IF NOT EXISTS school_name TEXT")
     cur.execute("ALTER TABLE school_records ADD COLUMN IF NOT EXISTS project_slug TEXT")
@@ -2014,6 +2047,282 @@ def beneficiary_account():
     except Exception as e:
         error_text = traceback.format_exc()
         print("BENEFICIARY ACCOUNT ERROR:")
+        print(error_text)
+        return f"<pre>Error occurred:\n{error_text}</pre>"
+
+
+
+# ========================
+# BASELINE ASSESSMENT HELPERS
+# ========================
+
+BASELINE_SECTIONS = {
+    "digital_learning": [
+        ("smart_tv", "Smart TV"),
+        ("electricity_available", "Electricity available"),
+        ("internet_connectivity", "Internet Connectivity"),
+        ("digital_learning_content", "Digital Learning Content"),
+    ],
+    "learning_environment": [
+        ("clean_classrooms", "Clean classrooms"),
+        ("adequate_ventilation", "Adequate ventilation"),
+        ("adequate_lighting", "Adequate lighting"),
+    ],
+    "building_condition": [
+        ("building_good_condition", "Building in good condition"),
+        ("roof_leakage", "Roof leakage"),
+        ("damaged_flooring", "Damaged flooring"),
+        ("doors_functional", "Doors functional"),
+        ("windows_functional", "Windows functional"),
+    ],
+    "toilet_facilities": [
+        ("toilet_available", "Toilet available"),
+        ("functional_toilet", "Functional toilet"),
+        ("separate_toilet_girls", "Separate toilet for girls"),
+        ("running_water_available", "Running water available"),
+        ("wash_basin_available", "Wash basin available"),
+        ("handwashing_soap_available", "Handwashing soap available"),
+        ("toilet_requires_repair", "The toilet requires repair"),
+    ],
+    "drinking_water": [
+        ("drinking_water_available", "Drinking water available"),
+        ("ro_system_installed", "RO system installed"),
+        ("water_cooler_available", "Water Cooler available"),
+        ("water_storage_tank", "Water storage tank"),
+        ("regular_water_supply", "Source of Regular water supply"),
+    ],
+    "menstrual_hygiene": [
+        ("sanitary_vending_machine", "Sanitary Vending Machine installed"),
+        ("sanitary_incinerator", "Sanitary PAD Incinerator installed"),
+        ("sanitary_pad_facility", "Sanitary PAD Facility Available"),
+        ("menstrual_awareness_campaign", "Menstrual Hygiene Awareness Campaign"),
+    ],
+    "photographic_documentation": [
+        ("front_view", "Front View"),
+        ("building_interior", "Building Interior"),
+        ("classroom", "Classroom"),
+        ("toilet", "Toilet"),
+        ("drinking_water_facility", "Drinking Water Facility"),
+        ("menstrual_hygiene_facility", "Menstrual Hygiene Facility"),
+    ],
+}
+
+
+def build_baseline_section_from_form(section_name):
+    section_data = {}
+    for field_key, label in BASELINE_SECTIONS.get(section_name, []):
+        section_data[field_key] = {
+            "label": label,
+            "status": request.form.get(f"{section_name}_{field_key}_status", "").strip(),
+            "remarks": request.form.get(f"{section_name}_{field_key}_remarks", "").strip()
+        }
+    return section_data
+
+
+def save_baseline_assessment(data):
+    init_db()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO baseline_assessments (
+            project_id, project_title, company_name, school_name, udise_code,
+            year_of_establishment, school_address, survey_date, survey_conducted_by,
+            total_students, boys, girls, students_with_disabilities, total_staff,
+            digital_learning, learning_environment, building_condition,
+            toilet_facilities, drinking_water, menstrual_hygiene,
+            photographic_documentation, principal_name, surveyor_name,
+            undertaking_accepted, general_remarks
+        ) VALUES (
+            %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
+            %s::jsonb,%s::jsonb,%s::jsonb,%s::jsonb,%s::jsonb,%s::jsonb,
+            %s::jsonb,%s,%s,%s,%s
+        )
+        RETURNING id
+    """, (
+        data.get("project_id", ""),
+        data.get("project_title", ""),
+        data.get("company_name", ""),
+        data.get("school_name", ""),
+        data.get("udise_code", ""),
+        data.get("year_of_establishment", ""),
+        data.get("school_address", ""),
+        data.get("survey_date", ""),
+        data.get("survey_conducted_by", ""),
+        data.get("total_students", 0),
+        data.get("boys", 0),
+        data.get("girls", 0),
+        data.get("students_with_disabilities", 0),
+        data.get("total_staff", 0),
+        json.dumps(data.get("digital_learning", {})),
+        json.dumps(data.get("learning_environment", {})),
+        json.dumps(data.get("building_condition", {})),
+        json.dumps(data.get("toilet_facilities", {})),
+        json.dumps(data.get("drinking_water", {})),
+        json.dumps(data.get("menstrual_hygiene", {})),
+        json.dumps(data.get("photographic_documentation", {})),
+        data.get("principal_name", ""),
+        data.get("surveyor_name", ""),
+        bool(data.get("undertaking_accepted", False)),
+        data.get("general_remarks", "")
+    ))
+    record_id = cur.fetchone()[0]
+    conn.commit()
+    cur.close()
+    conn.close()
+    return record_id
+
+
+def get_baseline_assessment_records():
+    init_db()
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT id, project_id, project_title, company_name, school_name,
+               udise_code, survey_date, survey_conducted_by,
+               total_students, boys, girls, total_staff,
+               created_at, updated_at
+        FROM baseline_assessments
+        ORDER BY id DESC
+    """)
+    records = cur.fetchall()
+    cur.close()
+    conn.close()
+    return records
+
+
+def get_baseline_assessment_by_id(record_id):
+    init_db()
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT *
+        FROM baseline_assessments
+        WHERE id = %s
+    """, (record_id,))
+    record = cur.fetchone()
+    cur.close()
+    conn.close()
+    return record
+
+
+def delete_baseline_assessment_record(record_id):
+    init_db()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM baseline_assessments WHERE id = %s", (record_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+
+# ========================
+# BASELINE ASSESSMENT ROUTES
+# ========================
+
+@app.route('/baseline-assessment', methods=['GET', 'POST'])
+def baseline_assessment():
+    if 'user' not in session:
+        return redirect('/')
+
+    success = False
+    saved_record_id = None
+
+    try:
+        project_ids = get_project_ids_by_project_slug('education')
+
+        if request.method == 'POST':
+            school_name = request.form.get('school_name', '').strip()
+            if not school_name:
+                return "School Name is required."
+
+            total_students = int(request.form.get('total_students') or 0)
+            boys = int(request.form.get('boys') or 0)
+            girls = int(request.form.get('girls') or 0)
+            students_with_disabilities = int(request.form.get('students_with_disabilities') or 0)
+            total_staff = int(request.form.get('total_staff') or 0)
+
+            data = {
+                "project_id": request.form.get('project_id', '').strip().upper(),
+                "project_title": request.form.get('project_title', '').strip(),
+                "company_name": request.form.get('company_name', '').strip(),
+                "school_name": school_name,
+                "udise_code": request.form.get('udise_code', '').strip(),
+                "year_of_establishment": request.form.get('year_of_establishment', '').strip(),
+                "school_address": request.form.get('school_address', '').strip(),
+                "survey_date": request.form.get('survey_date', '').strip(),
+                "survey_conducted_by": request.form.get('survey_conducted_by', '').strip(),
+                "total_students": total_students,
+                "boys": boys,
+                "girls": girls,
+                "students_with_disabilities": students_with_disabilities,
+                "total_staff": total_staff,
+                "digital_learning": build_baseline_section_from_form("digital_learning"),
+                "learning_environment": build_baseline_section_from_form("learning_environment"),
+                "building_condition": build_baseline_section_from_form("building_condition"),
+                "toilet_facilities": build_baseline_section_from_form("toilet_facilities"),
+                "drinking_water": build_baseline_section_from_form("drinking_water"),
+                "menstrual_hygiene": build_baseline_section_from_form("menstrual_hygiene"),
+                "photographic_documentation": build_baseline_section_from_form("photographic_documentation"),
+                "principal_name": request.form.get('principal_name', '').strip(),
+                "surveyor_name": request.form.get('surveyor_name', '').strip(),
+                "undertaking_accepted": request.form.get('undertaking_accepted') == 'yes',
+                "general_remarks": request.form.get('general_remarks', '').strip(),
+            }
+
+            saved_record_id = save_baseline_assessment(data)
+            success = True
+
+        return render_template(
+            'baseline_assessment.html',
+            success=success,
+            saved_record_id=saved_record_id,
+            project_ids=project_ids,
+            baseline_sections=BASELINE_SECTIONS
+        )
+
+    except Exception:
+        error_text = traceback.format_exc()
+        print("BASELINE ASSESSMENT ERROR:")
+        print(error_text)
+        return f"<pre>Error occurred:\n{error_text}</pre>"
+
+
+@app.route('/baseline-assessment-report')
+def baseline_assessment_report():
+    if 'user' not in session:
+        return redirect('/')
+
+    try:
+        record_id = request.args.get('id', type=int)
+        records = get_baseline_assessment_records()
+        selected_record = get_baseline_assessment_by_id(record_id) if record_id else None
+
+        return render_template(
+            'baseline_assessment_report.html',
+            records=records,
+            selected_record=selected_record,
+            baseline_sections=BASELINE_SECTIONS
+        )
+
+    except Exception:
+        error_text = traceback.format_exc()
+        print("BASELINE ASSESSMENT REPORT ERROR:")
+        print(error_text)
+        return f"<pre>Error occurred:\n{error_text}</pre>"
+
+
+@app.route('/delete-baseline-assessment/<int:record_id>', methods=['POST'])
+def delete_baseline_assessment(record_id):
+    if 'user' not in session:
+        return redirect('/')
+
+    try:
+        delete_baseline_assessment_record(record_id)
+        return redirect('/baseline-assessment-report')
+    except Exception:
+        error_text = traceback.format_exc()
+        print("DELETE BASELINE ASSESSMENT ERROR:")
         print(error_text)
         return f"<pre>Error occurred:\n{error_text}</pre>"
 
