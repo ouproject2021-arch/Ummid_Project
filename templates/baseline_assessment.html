@@ -27,6 +27,35 @@ function fetchBaselineProjectInfo(){
             }
         });
 }
+function fetchSchoolByUDISE(){
+    var udiseInput = document.getElementById('udise_code');
+    if(!udiseInput) return;
+
+    var udise = udiseInput.value.trim();
+    if(!udise) return;
+
+    fetch('/get-school-by-udisc/' + encodeURIComponent(udise), {cache:'no-store'})
+        .then(function(response){ return response.json(); })
+        .then(function(data){
+            if(data.found){
+                var schoolCode = document.getElementById('school_code');
+                var schoolName = document.getElementById('school_name');
+                var schoolAddress = document.getElementById('school_address');
+                var yearOfEstablishment = document.getElementById('year_of_establishment');
+
+                if(schoolCode) schoolCode.value = data.school_code || '';
+                if(schoolName) schoolName.value = data.school_name || '';
+                if(schoolAddress) schoolAddress.value = data.location || '';
+                if(yearOfEstablishment) yearOfEstablishment.value = data.year_of_establishment || '';
+            } else {
+                alert('No School Data Entry record found for this UDISE Code.');
+            }
+        })
+        .catch(function(error){
+            console.log('UDISE lookup failed:', error);
+        });
+}
+
 function calculateStudents(){
     var boys = parseInt(document.getElementById('boys').value) || 0;
     var girls = parseInt(document.getElementById('girls').value) || 0;
@@ -62,10 +91,10 @@ function calculateStudents(){
 </select></div>
 <div class="form-group"><label>Project Title</label><input id="project_title" name="project_title" readonly></div>
 <div class="form-group full"><label>Company Name</label><input id="company_name" name="company_name" readonly></div>
-<div class="form-group"><label>Name of School</label><input name="school_name" required></div>
-<div class="form-group"><label>UDISE Code</label><input name="udise_code"></div>
-<div class="form-group"><label>Year of Establishment</label><input name="year_of_establishment"></div>
-<div class="form-group full"><label>Complete School Address</label><textarea name="school_address"></textarea></div>
+<div class="form-group"><label>Name of School</label><input id="school_name" name="school_name" required readonly></div>
+<div class="form-group"><label>UDISE Code</label><input id="udise_code" name="udise_code" onblur="fetchSchoolByUDISE()"></div>
+<div class="form-group"><label>Year of Establishment</label><input id="year_of_establishment" name="year_of_establishment" readonly></div>
+<div class="form-group full"><label>Complete School Address</label><textarea id="school_address" name="school_address" readonly></textarea></div>
 <div class="form-group"><label>Date of Survey</label><input type="date" name="survey_date"></div>
 <div class="form-group"><label>Survey Conducted By</label><input name="survey_conducted_by"></div>
 </div>
