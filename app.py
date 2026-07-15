@@ -548,9 +548,9 @@ def get_school_by_udisc(udisc_number):
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute("""
-        SELECT id, udisc_number, school_code, school_name
+        SELECT id, udisc_number, school_code, school_name, project_id, location, year
         FROM school_records
-        WHERE udisc_number = %s
+        WHERE TRIM(udisc_number) = TRIM(%s)
         ORDER BY id DESC
         LIMIT 1
     """, (udisc_number,))
@@ -1453,7 +1453,10 @@ def get_school_by_udisc_route(udisc_number):
         return {
             "found": True,
             "school_code": record.get("school_code") or "",
-            "school_name": record.get("school_name") or ""
+            "school_name": record.get("school_name") or "",
+            "project_id": record.get("project_id") or "",
+            "location": record.get("location") or "",
+            "year_of_establishment": record.get("year") or ""
         }
 
     except Exception as e:
