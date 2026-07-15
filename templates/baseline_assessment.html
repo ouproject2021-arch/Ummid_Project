@@ -42,11 +42,19 @@ function fetchSchoolByUDISE(){
                 var schoolName = document.getElementById('school_name');
                 var schoolAddress = document.getElementById('school_address');
                 var yearOfEstablishment = document.getElementById('year_of_establishment');
+                var boys = document.getElementById('boys');
+                var girls = document.getElementById('girls');
+                var totalStudents = document.getElementById('total_students');
 
                 if(schoolCode) schoolCode.value = data.school_code || '';
                 if(schoolName) schoolName.value = data.school_name || '';
                 if(schoolAddress) schoolAddress.value = data.location || '';
                 if(yearOfEstablishment) yearOfEstablishment.value = data.year_of_establishment || '';
+                if(boys) boys.value = data.boys || 0;
+                if(girls) girls.value = data.girls || 0;
+                if(totalStudents){
+                    totalStudents.value = data.total_students || ((data.boys || 0) + (data.girls || 0));
+                }
             } else {
                 alert('No School Data Entry record found for this UDISE Code.');
             }
@@ -103,8 +111,8 @@ function calculateStudents(){
 <div class="assessment-card">
 <h3>B. Beneficiary Details</h3>
 <div class="form-grid">
-<div class="form-group"><label>Boys</label><input id="boys" name="boys" type="number" min="0" oninput="calculateStudents()"></div>
-<div class="form-group"><label>Girls</label><input id="girls" name="girls" type="number" min="0" oninput="calculateStudents()"></div>
+<div class="form-group"><label>Boys</label><input id="boys" name="boys" type="number" min="0" readonly></div>
+<div class="form-group"><label>Girls</label><input id="girls" name="girls" type="number" min="0" readonly></div>
 <div class="form-group"><label>Total Student Enrolled</label><input id="total_students" name="total_students" type="number" min="0" readonly></div>
 <div class="form-group"><label>Students with Disabilities</label><input name="students_with_disabilities" type="number" min="0"></div>
 <div class="form-group"><label>Total Staff</label><input name="total_staff" type="number" min="0"></div>
